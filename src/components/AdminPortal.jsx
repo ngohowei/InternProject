@@ -22,7 +22,9 @@ import {
   Mail,
   Phone,
   Building,
-  Download
+  Download,
+  Power,
+  PowerOff
 } from 'lucide-react';
 import { InvoiceModal } from './InvoiceModal';
 
@@ -37,8 +39,12 @@ export const AdminPortal = () => {
     adminCreateCustomerAccount,
     adminCreateEngineerAccount,
     addRemark,
-    showNotification
+    showNotification,
+    toggleEngineerActive
   } = useApp();
+
+  // Only active engineers can be assigned to new requests
+  const activeEngineers = (engineers || []).filter(eng => eng.isActive !== false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -308,31 +314,60 @@ export const AdminPortal = () => {
             return (
               <div
                 key={eng.id}
-                onClick={() => setEngineerFilter(isSelected ? 'ALL' : eng.id)}
                 style={{
-                  backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.15)' : 'var(--bg-input)',
-                  border: isSelected ? '2px solid #3b82f6' : '1px solid var(--border-color)',
+                  backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.15)' : eng.isActive === false ? 'rgba(239, 68, 68, 0.05)' : 'var(--bg-input)',
+                  border: isSelected ? '2px solid #3b82f6' : eng.isActive === false ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--border-color)',
                   borderRadius: '10px',
                   padding: '12px 14px',
-                  cursor: 'pointer',
+                  opacity: eng.isActive === false ? 0.6 : 1,
                   transition: 'all 0.2s ease'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <strong style={{ fontSize: '0.95rem' }}>{eng.name}</strong>
-                  <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.08)', fontSize: '0.7rem' }}>
-                    {eng.id}
-                  </span>
+                <div
+                  onClick={() => setEngineerFilter(isSelected ? 'ALL' : eng.id)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <strong style={{ fontSize: '0.95rem' }}>{eng.name}</strong>
+                    <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.08)', fontSize: '0.7rem' }}>
+                      {eng.id}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>{eng.specialty}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+                    {eng.isActive === false ? (
+                      <span style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: 600 }}>
+                        ⛔ Inactive
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.8rem', color: activeEngJobs.length > 0 ? '#fbbf24' : '#34d399', fontWeight: 600 }}>
+                        ⚡ {activeEngJobs.length} Active {activeEngJobs.length === 1 ? 'Task' : 'Tasks'}
+                      </span>
+                    )}
+                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                      {engJobs.length} Total
+                    </span>
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>{eng.specialty}</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
-                  <span style={{ fontSize: '0.8rem', color: activeEngJobs.length > 0 ? '#fbbf24' : '#34d399', fontWeight: 600 }}>
-                    ⚡ {activeEngJobs.length} Active {activeEngJobs.length === 1 ? 'Task' : 'Tasks'}
-                  </span>
-                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                    {engJobs.length} Total
-                  </span>
-                </div>
+                <button
+                  className={`btn btn-sm ${eng.isActive === false ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{
+                    width: '100%',
+                    marginTop: '8px',
+                    fontSize: '0.75rem',
+                    padding: '5px 8px',
+                    borderColor: eng.isActive === false ? '#22c55e' : '#ef4444',
+                    color: eng.isActive === false ? '#22c55e' : '#ef4444',
+                    backgroundColor: eng.isActive === false ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleEngineerActive(eng.id);
+                  }}
+                >
+                  {eng.isActive === false ? <Power size={12} /> : <PowerOff size={12} />}
+                  {eng.isActive === false ? ' Reactivate' : ' Deactivate'}
+                </button>
               </div>
             );
           })}
@@ -371,7 +406,7 @@ export const AdminPortal = () => {
               <option value="UNASSIGNED">⚠️ Unassigned Tickets</option>
               {engineers.map(eng => (
                 <option key={eng.id} value={eng.id}>
-                  👤 {eng.name} ({eng.specialty})
+                  {eng.isActive === false ? '🚫' : '👤'} {eng.name} ({eng.specialty}){eng.isActive === false ? ' [INACTIVE]' : ''}
                 </option>
               ))}
             </select>
@@ -443,7 +478,7 @@ export const AdminPortal = () => {
                         }}
                       >
                         <option value="">-- Assign Engineer --</option>
-                        {engineers.map(eng => (
+                        {activeEngineers.map(eng => (
                           <option key={eng.id} value={eng.id}>
                             {eng.name} ({eng.specialty})
                           </option>
@@ -601,18 +636,38 @@ export const AdminPortal = () => {
                   <th>Login Email</th>
                   <th>Phone Number</th>
                   <th>Status</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {engineers.map(eng => (
-                  <tr key={eng.id}>
+                  <tr key={eng.id} style={{ opacity: eng.isActive === false ? 0.5 : 1 }}>
                     <td className="font-mono text-amber" style={{ fontWeight: 700 }}>{eng.id}</td>
                     <td><strong>{eng.name}</strong></td>
                     <td><span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>{eng.specialty}</span></td>
                     <td>{eng.email}</td>
                     <td>{eng.phone}</td>
                     <td>
-                      <span className="badge status-completed">Active Staff</span>
+                      {eng.isActive === false ? (
+                        <span className="badge status-pending" style={{ color: '#ef4444', borderColor: '#ef4444' }}>Inactive</span>
+                      ) : (
+                        <span className="badge status-completed">Active Staff</span>
+                      )}
+                    </td>
+                    <td>
+                      <button
+                        className={`btn btn-sm ${eng.isActive === false ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{
+                          fontSize: '0.75rem',
+                          borderColor: eng.isActive === false ? '#22c55e' : '#ef4444',
+                          color: eng.isActive === false ? '#22c55e' : '#ef4444',
+                          backgroundColor: eng.isActive === false ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'
+                        }}
+                        onClick={() => toggleEngineerActive(eng.id)}
+                      >
+                        {eng.isActive === false ? <Power size={12} /> : <PowerOff size={12} />}
+                        {eng.isActive === false ? ' Activate' : ' Deactivate'}
+                      </button>
                     </td>
                   </tr>
                 ))}

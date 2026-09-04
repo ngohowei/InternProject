@@ -12,7 +12,9 @@ import {
   Save, 
   FileText, 
   MessageSquare,
-  Navigation
+  Navigation,
+  ChevronRight,
+  ChevronDown
 } from 'lucide-react';
 import { InvoiceModal } from './InvoiceModal';
 
@@ -31,6 +33,13 @@ export const EngineerPortal = () => {
   const [editingJob, setEditingJob] = useState(null);
   const [selectedInvoiceReq, setSelectedInvoiceReq] = useState(null);
   const [remarkText, setRemarkText] = useState({});
+
+  // Per-card expand/collapse. Default: active dispatches expanded, completed
+  // history collapsed so a long job history stays easy to scan.
+  const [cardOverrides, setCardOverrides] = useState({});
+  const isCardExpanded = (job) => cardOverrides[job.id] ?? (activeTab === 'active');
+  const toggleCard = (id) =>
+    setCardOverrides(prev => ({ ...prev, [id]: !(prev[id] ?? (activeTab === 'active')) }));
 
   // Field Report Edit Modal State
   const [reportState, setReportState] = useState({
@@ -160,6 +169,23 @@ export const EngineerPortal = () => {
         >
           Completed History ({completedJobs.length})
         </button>
+
+        {activeTab === 'completed' && completedJobs.length > 0 && (
+          <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setCardOverrides(Object.fromEntries(completedJobs.map(j => [j.id, true])))}
+            >
+              Expand all
+            </button>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setCardOverrides(Object.fromEntries(completedJobs.map(j => [j.id, false])))}
+            >
+              Collapse all
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Job Cards */}
@@ -174,9 +200,12 @@ export const EngineerPortal = () => {
             }}
           >
             {/* Job Header */}
-            <div className="card-header" style={{ marginBottom: '1rem' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+            <div className="card-header" style={{ marginBottom: isCardExpanded(job) ? '1rem' : 0 }}>
+              <div onClick={() => toggleCard(job.id)} style={{ cursor: 'pointer' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                  <span style={{ color: 'var(--text-muted)', display: 'flex' }}>
+                    {isCardExpanded(job) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  </span>
                   <span className="font-mono text-cyan" style={{ fontSize: '0.85rem', fontWeight: 700 }}>{job.id}</span>
                   <span className={`badge priority-${job.priority.toLowerCase()}`}>{job.priority}</span>
                   <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>{job.category}</span>
@@ -218,6 +247,8 @@ export const EngineerPortal = () => {
               </div>
             </div>
 
+            {isCardExpanded(job) && (
+            <>
             {/* Customer & Location */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', backgroundColor: 'var(--bg-input)', padding: '12px 16px', borderRadius: '8px', marginBottom: '1rem' }}>
               <div>
@@ -284,6 +315,8 @@ export const EngineerPortal = () => {
                 </button>
               </div>
             </div>
+            </>
+            )}
           </div>
         ))}
 

@@ -8,6 +8,7 @@ const engineerSchema = new mongoose.Schema({
   phone: { type: String, required: true },
   email: { type: String, required: true },
   status: { type: String, default: 'Available' },
+  isActive: { type: Boolean, default: true },
   activeJobs: { type: Number, default: 0 },
   hourlyRate: { type: Number, required: true, default: 100 }
 }, {

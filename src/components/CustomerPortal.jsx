@@ -12,6 +12,7 @@ import {
   AlertOctagon,
   MessageSquare,
   ChevronRight,
+  ChevronDown,
   HardHat,
   Star
 } from 'lucide-react';
@@ -23,6 +24,18 @@ export const CustomerPortal = () => {
   const [selectedInvoiceReq, setSelectedInvoiceReq] = useState(null);
   const [ratingModalReq, setRatingModalReq] = useState(null);
   const [remarkInput, setRemarkInput] = useState({});
+
+  // Which dispatch cards are expanded (collapsed by default so long service
+  // histories stay easy to scan)
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
+
+  const toggleCard = (id) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   // Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -165,6 +178,18 @@ export const CustomerPortal = () => {
               <option value="Completed">Completed</option>
               <option value="Paid">Paid</option>
             </select>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setExpandedIds(new Set(filteredRequests.map(r => r.id)))}
+            >
+              Expand all
+            </button>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setExpandedIds(new Set())}
+            >
+              Collapse all
+            </button>
           </div>
         </div>
 
@@ -180,10 +205,16 @@ export const CustomerPortal = () => {
                 transition: 'border-color 0.2s ease'
               }}
             >
-              {/* Header Info */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+              {/* Header Info - click to expand / collapse the full dispatch detail */}
+              <div
+                onClick={() => toggleCard(req.id)}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', cursor: 'pointer' }}
+              >
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                    <span style={{ color: 'var(--text-muted)', display: 'flex' }}>
+                      {expandedIds.has(req.id) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    </span>
                     <span className="font-mono text-cyan" style={{ fontSize: '0.85rem', fontWeight: 700 }}>
                       {req.id}
                     </span>
@@ -192,6 +223,9 @@ export const CustomerPortal = () => {
                     </span>
                     <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>
                       {req.category}
+                    </span>
+                    <span className="badge" style={{ backgroundColor: 'rgba(56,189,248,0.12)', color: '#38bdf8' }}>
+                      {req.status}
                     </span>
                   </div>
                   <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>{req.title}</h3>
@@ -209,6 +243,8 @@ export const CustomerPortal = () => {
                 </div>
               </div>
 
+              {expandedIds.has(req.id) && (
+              <>
               {/* Problem Description */}
               <div style={{ marginTop: '1rem', padding: '10px 14px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px', fontSize: '0.875rem' }}>
                 <strong>Issue Description:</strong> {req.description}
@@ -315,6 +351,8 @@ export const CustomerPortal = () => {
                   </button>
                 </div>
               </div>
+              </>
+              )}
             </div>
           ))}
         </div>

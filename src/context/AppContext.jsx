@@ -441,6 +441,34 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // Admin: Toggle Engineer Active/Inactive in MongoDB
+  const toggleEngineerActive = async (engineerId) => {
+    if (currentRole !== 'admin') {
+      showNotification('Only Admin can activate/deactivate engineers', 'error');
+      return false;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/engineers/${engineerId}/toggle-active`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+
+      if (data?.success) {
+        showNotification(data.message || `Engineer status updated in MongoDB`);
+        await refreshDataFromMongoDB();
+        return true;
+      } else {
+        showNotification(data?.error || 'Failed to update engineer status', 'error');
+        return false;
+      }
+    } catch (err) {
+      showNotification('Database connection error', 'error');
+      return false;
+    }
+  };
+
   // Reset Demo Data
   const resetDemo = async () => {
     setCurrentUser(null);
@@ -476,6 +504,7 @@ export const AppProvider = ({ children }) => {
       submitCustomerRating,
       markInvoiceSent,
       markInvoicePaid,
+      toggleEngineerActive,
       resetDemo,
       refreshDataFromMongoDB,
       showNotification
