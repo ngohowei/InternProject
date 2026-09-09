@@ -618,7 +618,9 @@ export const AdminPortal = () => {
                     <td>{acc.name}</td>
                     <td>{acc.email}</td>
                     <td>{acc.phone}</td>
-                    <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{acc.createdAt}</td>
+                    <td style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                      {acc.createdAt ? new Date(acc.createdAt).toLocaleDateString() : '—'}
+                    </td>
                     <td>
                       <span className="badge status-completed">Authorized</span>
                     </td>

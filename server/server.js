@@ -1,51 +1,72 @@
-import 'dotenv/config';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
+
+// Load server/.env regardless of the directory the process was started from.
+dotenv.config({ path: path.join(path.dirname(fileURLToPath(import.meta.url)), '.env') });
+
 import express from 'express';
-import mongoose from 'mongoose';
 import cors from 'cors';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+
+import { connectDB, isDbConnected } from './config/db.js';
+import { seedDatabase } from './seed.js';
 
 import authRoutes from './routes/authRoutes.js';
 import accountRoutes from './routes/accountRoutes.js';
 import requestRoutes from './routes/requestRoutes.js';
 import engineerRoutes from './routes/engineerRoutes.js';
-import { seedDatabase } from './seed.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
-app.use(express.json());
+// CORS: allow the configured client origin(s), or all in development.
+const clientOrigins = (process.env.CLIENT_ORIGIN || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+app.use(cors({ origin: clientOrigins.length ? clientOrigins : true }));
 
-// Connect MongoDB with Automatic Fallback
-const connectMongoDB = async () => {
-  const LOCAL_URI = 'mongodb://localhost:27017/apex_fieldeng';
-  try {
-    console.log('🍃 Attempting connection to local MongoDB database...');
-    await mongoose.connect(LOCAL_URI, { serverSelectionTimeoutMS: 2000 });
-    console.log('✅ Connected to MongoDB Database at mongodb://localhost:27017/apex_fieldeng');
-  } catch (err) {
-    console.log('⚠️ Local MongoDB service not detected on port 27017. Initializing Embedded MongoDB Server...');
-    const mongoServer = await MongoMemoryServer.create();
-    const memoryUri = mongoServer.getUri();
-    await mongoose.connect(memoryUri);
-    console.log(`✅ Embedded MongoDB Instance Ready at ${memoryUri}`);
-  }
+app.use(helmet());
+app.use(express.json({ limit: '100kb' }));
 
-  // Seed default data if database is empty
-  await seedDatabase();
-};
+// Throttle auth endpoints (brute force / SMS-email abuse).
+app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false }));
 
-// API Route Mounts
 app.use('/api/auth', authRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/requests', requestRoutes);
 app.use('/api/engineers', engineerRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', database: 'MongoDB Connected', timestamp: new Date().toISOString() });
+  const connected = isDbConnected();
+  res.status(connected ? 200 : 503).json({
+    status: connected ? 'OK' : 'DEGRADED',
+    database: connected ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString()
+  });
 });
 
-app.listen(PORT, async () => {
-  await connectMongoDB();
-  console.log(`🚀 Welpack Engineering MongoDB Backend API Server running on http://localhost:${PORT}`);
+// Fallback error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ success: false, error: 'Server error' });
 });
+
+const start = async () => {
+  try {
+    await connectDB();
+    await seedDatabase();
+    app.listen(PORT, () => {
+      console.log(`🚀 Welpack Engineering API running on http://localhost:${PORT}`);
+    });
+  } catch (err) {
+    console.error('❌ Failed to start server:', err.message);
+    process.exit(1);
+  }
+};
+
+start();

@@ -26,13 +26,23 @@ const billingSchema = new mongoose.Schema({
   totalHours: { type: Number, default: 0 },
   laborTotal: { type: Number, default: 0 },
   partsTotal: { type: Number, default: 0 },
-  subtotal: { type: Number, default: 150 },
-  tax: { type: Number, default: 12 },
-  grandTotal: { type: Number, default: 162 },
+  subtotal: { type: Number, default: 0 },
+  tax: { type: Number, default: 0 },
+  grandTotal: { type: Number, default: 0 },
   billingStatus: { type: String, default: 'Unbilled' }, // 'Unbilled' | 'Invoice Sent' | 'Paid'
   invoiceNumber: { type: String, default: '' },
   invoiceDate: { type: String, default: null }
 }, { _id: false });
+
+const ratingSchema = new mongoose.Schema({
+  stars: { type: Number, min: 1, max: 5 },
+  review: { type: String, default: '' },
+  ratedBy: { type: String, default: '' },
+  ratedAt: { type: String, default: null }
+}, { _id: false });
+
+// Single flat tax rate used everywhere billing is calculated.
+export const TAX_RATE = 0.08;
 
 const requestSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
@@ -51,7 +61,8 @@ const requestSchema = new mongoose.Schema({
   assignedEngineerName: { type: String, default: 'Unassigned' },
   workLog: [workLogSchema],
   fieldReport: { type: fieldReportSchema, default: () => ({}) },
-  billing: { type: billingSchema, default: () => ({}) }
+  billing: { type: billingSchema, default: () => ({}) },
+  rating: { type: ratingSchema, default: null }
 }, {
   timestamps: true
 });

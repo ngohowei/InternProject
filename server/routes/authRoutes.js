@@ -2,14 +2,16 @@ import express from 'express';
 import twilio from 'twilio';
 import nodemailer from 'nodemailer';
 import { Account } from '../models/Account.js';
+import { signToken, requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
+const isProd = () => process.env.NODE_ENV === 'production';
 
 // Helper: Initialize Twilio Client dynamically from process.env
 const getTwilioClient = () => {
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
-  if (sid && sid !== 'your_twilio_account_sid_here' && token && token !== 'your_twilio_auth_token_here') {
+  if (sid && sid.startsWith('AC') && token) {
     try {
       return twilio(sid, token);
     } catch (e) {
@@ -24,10 +26,10 @@ const getNodemailerTransporter = () => {
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  if (user && user !== 'your_email@gmail.com' && pass && pass !== 'your_app_password_here') {
+  if (host && user && pass) {
     try {
       return nodemailer.createTransport({
-        host: host || 'smtp.gmail.com',
+        host,
         port: parseInt(process.env.SMTP_PORT) || 587,
         secure: false,
         auth: { user, pass }
@@ -39,7 +41,14 @@ const getNodemailerTransporter = () => {
   return null;
 };
 
-// POST /api/auth/login - Role-based database login
+const findAccount = (emailOrPhone) => {
+  const raw = String(emailOrPhone).trim();
+  return Account.findOne({
+    $or: [{ email: raw.toLowerCase() }, { phone: raw }]
+  });
+};
+
+// POST /api/auth/login - password check + JWT issue
 router.post('/login', async (req, res) => {
   try {
     const { emailOrPhone, password } = req.body;
@@ -47,30 +56,24 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Email/Phone and Password required' });
     }
 
-    const query = emailOrPhone.trim().toLowerCase();
-    const account = await Account.findOne({
-      $or: [
-        { email: query },
-        { phone: emailOrPhone.trim() }
-      ],
-      password: password
-    });
-
-    if (!account) {
+    const account = await findAccount(emailOrPhone);
+    if (!account || !(await account.verifyPassword(String(password)))) {
       return res.status(401).json({ success: false, error: 'Invalid email/phone or password' });
     }
 
-    let role = account.role;
-    if (role === 'staff') role = 'engineer';
+    // 'staff' is the DB role; the client-facing role is 'engineer'
+    const clientRole = account.role === 'staff' ? 'engineer' : account.role;
+    const token = signToken(account);
 
     return res.json({
       success: true,
+      token,
       account: {
         id: account.id,
         name: account.name,
         email: account.email,
         phone: account.phone,
-        role: role,
+        role: clientRole,
         dbRole: account.role,
         customerName: account.customerName,
         engineerId: account.engineerId
@@ -78,11 +81,37 @@ router.post('/login', async (req, res) => {
     });
   } catch (err) {
     console.error('Login error:', err);
-    res.status(500).json({ success: false, error: 'Database server error' });
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
-// POST /api/auth/send-otp - Generate & Send Real SMS (Twilio) and Email (Nodemailer) OTP
+// GET /api/auth/me - restore session from a stored token
+router.get('/me', requireAuth, async (req, res) => {
+  try {
+    const account = await Account.findOne({ id: req.user.sub });
+    if (!account) return res.status(404).json({ success: false, error: 'Account not found' });
+
+    const clientRole = account.role === 'staff' ? 'engineer' : account.role;
+    return res.json({
+      success: true,
+      account: {
+        id: account.id,
+        name: account.name,
+        email: account.email,
+        phone: account.phone,
+        role: clientRole,
+        dbRole: account.role,
+        customerName: account.customerName,
+        engineerId: account.engineerId
+      }
+    });
+  } catch (err) {
+    console.error('Session restore error:', err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// POST /api/auth/send-otp - generate a reset code, deliver via SMS/email when configured
 router.post('/send-otp', async (req, res) => {
   try {
     const { emailOrPhone } = req.body;
@@ -90,95 +119,80 @@ router.post('/send-otp', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Email or Phone required' });
     }
 
-    const query = emailOrPhone.trim().toLowerCase();
-    const account = await Account.findOne({
-      $or: [
-        { email: query },
-        { phone: emailOrPhone.trim() }
-      ]
-    });
-
+    const account = await findAccount(emailOrPhone);
     if (!account) {
-      return res.status(404).json({ success: false, error: `Account for '${emailOrPhone}' not found in MongoDB` });
+      // Do not reveal whether an account exists
+      return res.json({ success: true, message: 'If that account exists, a verification code has been sent.' });
     }
 
-    // Generate random 6-digit OTP code
     const otpCode = String(Math.floor(100000 + Math.random() * 900000));
     account.otpCode = otpCode;
-    account.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes validity
+    account.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     await account.save();
 
-    let deliveryStatus = [];
-    const isPhoneInput = emailOrPhone.trim().startsWith('+') || /^[0-9\-\s\(\)]+$/.test(emailOrPhone.trim());
+    const deliveryStatus = [];
+    const isPhoneInput = /^[+0-9\-\s()]+$/.test(String(emailOrPhone).trim());
 
-    // Attempt Twilio Real SMS if input is phone or requested
     const twilioClient = getTwilioClient();
     const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
-
-    if (isPhoneInput || account.phone) {
-      if (twilioClient && twilioPhone && twilioPhone !== 'your_twilio_phone_number_here') {
-        try {
-          await twilioClient.messages.create({
-            body: `[Welpack Engineering] Your password verification code is ${otpCode}. Valid for 10 minutes.`,
-            from: twilioPhone,
-            to: account.phone || emailOrPhone.trim()
-          });
-          deliveryStatus.push(`📱 Real SMS sent via Twilio to ${account.phone || emailOrPhone}`);
-        } catch (smsErr) {
-          console.error('Twilio SMS error:', smsErr.message);
-          deliveryStatus.push(`⚠️ Twilio SMS error: ${smsErr.message}`);
-        }
-      } else if (isPhoneInput) {
-        deliveryStatus.push(`⚠️ Twilio Phone Number not configured in server/.env yet (Sent OTP to account email fallback)`);
+    if ((isPhoneInput || account.phone) && twilioClient && twilioPhone) {
+      try {
+        await twilioClient.messages.create({
+          body: `[Welpack Engineering] Your password verification code is ${otpCode}. Valid for 10 minutes.`,
+          from: twilioPhone,
+          to: account.phone || String(emailOrPhone).trim()
+        });
+        deliveryStatus.push('SMS sent');
+      } catch (smsErr) {
+        console.error('Twilio SMS error:', smsErr.message);
       }
     }
 
-    // Attempt Nodemailer Real Email if input is email or fallback
     const transporter = getNodemailerTransporter();
-    if (transporter && account.email && (!isPhoneInput || deliveryStatus.length === 0 || deliveryStatus.some(s => s.includes('not configured')))) {
+    if (transporter && account.email && deliveryStatus.length === 0) {
       try {
         await transporter.sendMail({
           from: process.env.SMTP_FROM || '"Welpack Engineering Support" <support@welpack.com>',
           to: account.email,
-          subject: '🔑 Welpack Engineering - Verification Code',
-          html: `
-            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 500px;">
-              <h2 style="color: #2563eb; margin-bottom: 8px;">Welpack Engineering</h2>
-              <p style="color: #64748b; margin-top: 0;">Password Reset Verification Code</p>
-              <p>Hello <strong>${account.name}</strong>,</p>
-              <p>Your 6-digit verification code is:</p>
-              <div style="background-color: #f1f5f9; border-left: 4px solid #3b82f6; padding: 14px 20px; font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1e293b; display: inline-block; margin: 12px 0;">
-                ${otpCode}
-              </div>
-              <p style="font-size: 0.85rem; color: #64748b;">This code will expire in 10 minutes.</p>
-            </div>
-          `
+          subject: 'Welpack Engineering - Verification Code',
+          html: `<p>Hello <strong>${account.name}</strong>,</p>
+                 <p>Your 6-digit verification code is:</p>
+                 <p style="font-size:28px;font-weight:bold;letter-spacing:6px;">${otpCode}</p>
+                 <p>This code expires in 10 minutes.</p>`
         });
-        deliveryStatus.push(`✉️ Real Email sent via Nodemailer to ${account.email}`);
+        deliveryStatus.push('Email sent');
       } catch (emailErr) {
-        console.error('Nodemailer Email error:', emailErr.message);
-        deliveryStatus.push(`⚠️ Email error: ${emailErr.message}`);
+        console.error('Nodemailer error:', emailErr.message);
       }
     }
 
-    const isRealServiceUsed = deliveryStatus.some(s => s.includes('Real SMS') || s.includes('Real Email'));
-
-    if (deliveryStatus.length === 0) {
-      deliveryStatus.push(`🔑 OTP generated: ${otpCode} (Fill server/.env with Twilio/Nodemailer credentials for live SMS/Email delivery)`);
-    }
-
+    const delivered = deliveryStatus.length > 0;
     return res.json({
       success: true,
-      otpCode: isRealServiceUsed ? undefined : otpCode,
-      message: deliveryStatus.join(' | ')
+      // Only expose the code directly outside production, when no real channel delivered it
+      devOtpCode: !isProd() && !delivered ? otpCode : undefined,
+      message: delivered
+        ? `Verification code sent (${deliveryStatus.join(', ')}).`
+        : isProd()
+          ? 'Verification code generated. Contact your administrator if you do not receive it.'
+          : `Dev mode: code is ${otpCode} (configure SMTP/Twilio in server/.env for real delivery).`
     });
   } catch (err) {
     console.error('Send OTP error:', err);
-    res.status(500).json({ success: false, error: err.message || 'Server error' });
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
-// POST /api/auth/verify-otp - Pre-verify code before showing new password fields
+const verifyIdentity = (account, currentPasswordOrCode) => {
+  const codeValid =
+    account.otpCode &&
+    currentPasswordOrCode === account.otpCode &&
+    account.otpExpiresAt &&
+    new Date() < new Date(account.otpExpiresAt);
+  return { codeValid };
+};
+
+// POST /api/auth/verify-otp - pre-check a code or current password
 router.post('/verify-otp', async (req, res) => {
   try {
     const { emailOrPhone, currentPasswordOrCode } = req.body;
@@ -186,69 +200,57 @@ router.post('/verify-otp', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Email/Phone and Verification Code required' });
     }
 
-    const query = emailOrPhone.trim().toLowerCase();
-    const account = await Account.findOne({
-      $or: [
-        { email: query },
-        { phone: emailOrPhone.trim() }
-      ]
-    });
-
+    const account = await findAccount(emailOrPhone);
     if (!account) {
-      return res.status(404).json({ success: false, error: `Account '${emailOrPhone}' not found` });
-    }
-
-    const isCurrentPass = currentPasswordOrCode === account.password;
-    const isDemoCode = currentPasswordOrCode === '123456';
-    const isOtpValid = account.otpCode && currentPasswordOrCode === account.otpCode && account.otpExpiresAt && new Date() < new Date(account.otpExpiresAt);
-
-    if (!isCurrentPass && !isDemoCode && !isOtpValid) {
       return res.status(401).json({ success: false, error: 'Incorrect verification code or password' });
     }
 
-    return res.json({ success: true, message: 'Identity verified successfully!' });
+    const isCurrentPass = await account.verifyPassword(String(currentPasswordOrCode));
+    const { codeValid } = verifyIdentity(account, currentPasswordOrCode);
+
+    if (!isCurrentPass && !codeValid) {
+      return res.status(401).json({ success: false, error: 'Incorrect verification code or password' });
+    }
+
+    return res.json({ success: true, message: 'Identity verified' });
   } catch (err) {
     console.error('Verify OTP error:', err);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });
+
+// POST /api/auth/change-password
 router.post('/change-password', async (req, res) => {
   try {
     const { emailOrPhone, currentPasswordOrCode, newPassword } = req.body;
     if (!emailOrPhone || !currentPasswordOrCode || !newPassword) {
       return res.status(400).json({ success: false, error: 'Missing required parameters' });
     }
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ success: false, error: 'New password must be at least 6 characters' });
+    }
 
-    const query = emailOrPhone.trim().toLowerCase();
-    const account = await Account.findOne({
-      $or: [
-        { email: query },
-        { phone: emailOrPhone.trim() }
-      ]
-    });
-
+    const account = await findAccount(emailOrPhone);
     if (!account) {
-      return res.status(404).json({ success: false, error: 'Account not found' });
+      return res.status(401).json({ success: false, error: 'Incorrect current password or invalid/expired code' });
     }
 
-    // Verification check: current password OR valid unexpired OTP OR demo code 123456
-    const isCurrentPass = currentPasswordOrCode === account.password;
-    const isDemoCode = currentPasswordOrCode === '123456';
-    const isOtpValid = account.otpCode && currentPasswordOrCode === account.otpCode && account.otpExpiresAt && new Date() < new Date(account.otpExpiresAt);
+    const isCurrentPass = await account.verifyPassword(String(currentPasswordOrCode));
+    const { codeValid } = verifyIdentity(account, currentPasswordOrCode);
 
-    if (!isCurrentPass && !isDemoCode && !isOtpValid) {
-      return res.status(401).json({ success: false, error: 'Incorrect current password or invalid/expired verification code' });
+    if (!isCurrentPass && !codeValid) {
+      return res.status(401).json({ success: false, error: 'Incorrect current password or invalid/expired code' });
     }
 
-    account.password = newPassword;
+    account.password = String(newPassword); // hashed by the model pre-save hook
     account.otpCode = null;
     account.otpExpiresAt = null;
     await account.save();
 
-    return res.json({ success: true, message: 'Password updated successfully in MongoDB' });
+    return res.json({ success: true, message: 'Password updated successfully' });
   } catch (err) {
     console.error('Password change error:', err);
-    res.status(500).json({ success: false, error: 'Database error' });
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 

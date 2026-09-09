@@ -86,9 +86,18 @@ class ErrorBoundary extends React.Component {
 }
 
 const MainLayout = () => {
-  const { currentUser, currentRole } = useApp();
+  const { currentUser, currentRole, authReady } = useApp();
 
-  // Initial Screen: If not logged in, display the Company Login Page
+  // Wait until a stored session has been checked, so we don't flash the login page on refresh.
+  if (!authReady) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+        Loading…
+      </div>
+    );
+  }
+
+  // Not logged in: show the Company Login Page
   if (!currentUser) {
     return <LoginPage />;
   }
@@ -98,7 +107,7 @@ const MainLayout = () => {
       <RoleHeader />
       <main className="main-content">
         {currentRole === 'customer' && <CustomerPortal />}
-        {(currentRole === 'engineer' || currentRole === 'staff') && <EngineerPortal />}
+        {currentRole === 'engineer' && <EngineerPortal />}
         {currentRole === 'admin' && <AdminPortal />}
       </main>
 
