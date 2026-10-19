@@ -27,10 +27,25 @@ export const RoleHeader = () => {
     requests,
     notification,
     logout,
-    resetDemo
+    resetDemo,
+    demoMode
   } = useApp();
 
   const [showPassModal, setShowPassModal] = useState(false);
+
+  // Reset Demo erases EVERYTHING, so it needs the user to type RESET first.
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetText, setResetText] = useState('');
+  const [resetting, setResetting] = useState(false);
+  const closeReset = () => { if (!resetting) { setShowResetConfirm(false); setResetText(''); } };
+  const doReset = async (e) => {
+    e.preventDefault();
+    if (resetText !== 'RESET') return;
+    setResetting(true);
+    const ok = await resetDemo(resetText);
+    setResetting(false);
+    if (ok) { setShowResetConfirm(false); setResetText(''); }
+  };
 
   const unassignedCount = requests.filter(r => r.status === 'Pending').length;
   const unbilledCount = requests.filter(
@@ -97,10 +112,10 @@ export const RoleHeader = () => {
               <LogOut size={14} /> Log Out
             </button>
 
-            {currentRole === 'admin' && (
+            {currentRole === 'admin' && demoMode === true && (
               <button
                 className="btn btn-secondary btn-sm"
-                onClick={resetDemo}
+                onClick={() => setShowResetConfirm(true)}
                 title="Wipe all data and restore the initial demo state"
               >
                 <RotateCcw size={14} /> Reset Demo
@@ -162,6 +177,49 @@ export const RoleHeader = () => {
       </div>
 
       <ChangePasswordModal isOpen={showPassModal} onClose={() => setShowPassModal(false)} />
+
+      {/* Reset Demo confirmation: erases everything, so make the user type RESET */}
+      {showResetConfirm && (
+        <div className="modal-overlay" onClick={closeReset}>
+          <div className="modal-content" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 style={{ color: '#f87171' }}>Erase ALL data?</h3>
+              <button className="close-btn" onClick={closeReset} disabled={resetting}>✕</button>
+            </div>
+            <form onSubmit={doReset}>
+              <div className="modal-body">
+                <div style={{ backgroundColor: 'rgba(239,68,68,0.1)', borderLeft: '4px solid #ef4444', padding: '10px 14px', borderRadius: '6px', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                  This permanently deletes <strong>every ticket, account, engineer and catalog item</strong> and
+                  puts the sample demo data back. Passwords go back to the demo defaults. This cannot be undone.
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="resetConfirmInput">Type <strong>RESET</strong> to confirm</label>
+                  <input
+                    id="resetConfirmInput"
+                    type="text"
+                    className="input font-mono"
+                    value={resetText}
+                    onChange={(e) => setResetText(e.target.value)}
+                    autoComplete="off"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={closeReset} disabled={resetting}>Cancel</button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ backgroundColor: '#dc2626', borderColor: '#dc2626' }}
+                  disabled={resetText !== 'RESET' || resetting}
+                >
+                  {resetting ? 'Erasing…' : 'Erase everything and reset'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 };

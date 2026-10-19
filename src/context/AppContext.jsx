@@ -21,6 +21,9 @@ export const AppProvider = ({ children }) => {
   const [authReady, setAuthReady] = useState(false);
   // Why the user was signed out (expired session / deactivated account); shown on the login page.
   const [authNotice, setAuthNotice] = useState('');
+  // Whether this server is in demo mode (sign-in shortcuts + Reset Demo). null until the server answers.
+  const [demoMode, setDemoMode] = useState(null);
+  const [demoLogins, setDemoLogins] = useState([]); // sample logins for the 1-click buttons (demo mode only)
 
   const [selectedEngineerId, setSelectedEngineerId] = useState(null);
   const [notification, setNotification] = useState(null);
@@ -115,6 +118,17 @@ export const AppProvider = ({ children }) => {
       setAuthReady(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Ask the server which demo-only features to show. If it can't be reached, stay on the safe side (off).
+  useEffect(() => {
+    fetch(`${API_BASE}/config`)
+      .then((r) => r.json())
+      .then((c) => {
+        setDemoMode(c?.demoMode === true);
+        setDemoLogins(c?.demoMode === true && Array.isArray(c.demoLogins) ? c.demoLogins : []);
+      })
+      .catch(() => { setDemoMode(false); setDemoLogins([]); });
   }, []);
 
   const login = async (emailOrPhone, password) => {
@@ -360,8 +374,9 @@ export const AppProvider = ({ children }) => {
   const importParts = async (items, dryRun) =>
     apiFetch('/parts/import', { method: 'POST', body: JSON.stringify({ items, dryRun }) });
 
-  const resetDemo = async () => {
-    const data = await apiFetch('/admin/reset-demo', { method: 'POST' });
+  // Erases ALL data and restores the sample data. The caller passes the word the user typed to confirm.
+  const resetDemo = async (confirmText) => {
+    const data = await apiFetch('/admin/reset-demo', { method: 'POST', body: JSON.stringify({ confirm: confirmText }) });
     if (data?.success) {
       showNotification('Demo data reset to initial state');
       await refreshData();
@@ -378,6 +393,8 @@ export const AppProvider = ({ children }) => {
       currentRole,
       authReady,
       authNotice,
+      demoMode,
+      demoLogins,
       selectedEngineerId,
       setSelectedEngineerId,
       engineers,

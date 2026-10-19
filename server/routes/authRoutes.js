@@ -3,6 +3,7 @@ import twilio from 'twilio';
 import nodemailer from 'nodemailer';
 import { Account } from '../models/Account.js';
 import { signToken, requireAuth, isEngineerActive, DEACTIVATED_MESSAGE } from '../middleware/auth.js';
+import { loginPerAccount, loginPerNetwork, otpPerAccount, otpPerNetwork, codeCheck } from '../middleware/rateLimits.js';
 
 const router = express.Router();
 const isProd = () => process.env.NODE_ENV === 'production';
@@ -49,7 +50,7 @@ const findAccount = (emailOrPhone) => {
 };
 
 // POST /api/auth/login - password check + JWT issue
-router.post('/login', async (req, res) => {
+router.post('/login', loginPerNetwork, loginPerAccount, async (req, res) => {
   try {
     const { emailOrPhone, password } = req.body;
     if (!emailOrPhone || !password) {
@@ -118,7 +119,7 @@ router.get('/me', requireAuth, async (req, res) => {
 });
 
 // POST /api/auth/send-otp - generate a reset code, deliver via SMS/email when configured
-router.post('/send-otp', async (req, res) => {
+router.post('/send-otp', otpPerNetwork, otpPerAccount, async (req, res) => {
   try {
     const { emailOrPhone } = req.body;
     if (!emailOrPhone) {
@@ -199,7 +200,7 @@ const verifyIdentity = (account, currentPasswordOrCode) => {
 };
 
 // POST /api/auth/verify-otp - pre-check a code or current password
-router.post('/verify-otp', async (req, res) => {
+router.post('/verify-otp', codeCheck, async (req, res) => {
   try {
     const { emailOrPhone, currentPasswordOrCode } = req.body;
     if (!emailOrPhone || !currentPasswordOrCode) {
@@ -226,7 +227,7 @@ router.post('/verify-otp', async (req, res) => {
 });
 
 // POST /api/auth/change-password
-router.post('/change-password', async (req, res) => {
+router.post('/change-password', codeCheck, async (req, res) => {
   try {
     const { emailOrPhone, currentPasswordOrCode, newPassword } = req.body;
     if (!emailOrPhone || !currentPasswordOrCode || !newPassword) {

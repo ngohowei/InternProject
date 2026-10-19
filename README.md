@@ -73,6 +73,8 @@ Then edit `server/.env`:
 | `MONGODB_URI`    | yes\*    | e.g. `mongodb://localhost:27017/welpack_fieldeng`                       |
 | `JWT_SECRET`     | yes      | any long random string — `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` |
 | `USE_MEMORY_DB`  | no       | `true` to run without MongoDB (throwaway data)                       |
+| `DEMO_MODE`      | no       | `true` = show the 1-click sign-in buttons and the admin **Reset Demo** button. **Set `false` before sharing the site or going live.** Unset: on in development, off in production |
+| `TRUST_PROXY`    | no       | behind a reverse proxy, how many proxies to trust (e.g. `1`) so sign-in limits use the visitor's real address |
 | `CLIENT_ORIGIN`  | no       | comma-separated allowed origins; blank = allow all (dev)            |
 | `TWILIO_*`       | no       | real SMS OTP delivery                                               |
 | `SMTP_*`         | no       | real email OTP delivery                                             |
@@ -98,7 +100,7 @@ Run them separately if you prefer: `npm run dev:server` and `npm run dev:web`.
 
 ## Demo accounts
 
-The login page has **1-click role shortcuts**, or sign in manually:
+In demo mode (`DEMO_MODE=true`) the login page has **1-click role shortcuts**; otherwise sign in manually:
 
 | Role     | Email                    | Password   |
 | -------- | ------------------------ | ---------- |
@@ -109,7 +111,9 @@ The login page has **1-click role shortcuts**, or sign in manually:
 Other seeded engineers (`carlos@`, `priya@`, `marcus@welpack.com`) and customers
 (`elena@biopharm.io`, `markus@logixhub.com`) share the same passwords. These are demo
 credentials for local development. Passwords are bcrypt-hashed in the database; an admin
-can reset all data from the header (**Reset Demo**).
+can reset all data from the header (**Reset Demo**, demo mode only; you must type `RESET` to confirm).
+With `DEMO_MODE=false` the shortcuts and Reset Demo are gone, the server refuses resets, and the demo
+passwords are not sent to the browser at all.
 
 ---
 
@@ -160,7 +164,8 @@ Base URL: `/api` (proxied to `http://localhost:5000` in dev). All routes except
 | `POST /parts/import`                 | admin      | Add / update many items from a CSV (dry-run preview supported) |
 | `PATCH /parts/:id`                   | admin      | Edit code / name / price, hide or show    |
 | `DELETE /parts/:id`                  | admin      | Delete a catalog item                     |
-| `POST /admin/reset-demo`             | admin      | Wipe and re-seed all data                 |
+| `POST /admin/reset-demo`             | admin      | Wipe and re-seed all data (demo mode only, body `{ "confirm": "RESET" }`) |
+| `GET  /config`                       | none       | `{ demoMode, demoLogins }` - which demo-only features to show |
 
 **Large catalogs:** the catalog is never loaded all at once. `GET /parts` does the work in the database and
 accepts `q` (name or code), `category`, `status` (admin: `active`/`hidden`), `sort` (`code`, `name`, `category`,
@@ -174,6 +179,11 @@ Automation, Mechanical, Software, General.
 search the catalog by name or code and enter only a quantity; the server fills in the name and price
 from the catalog, so prices can't be typed in. Each report line stores a snapshot of the code, name and
 price at the time it was added, so later catalog edits never change work already logged or invoiced.
+
+**Sign-in protection:** only *failed* attempts count, tracked per account and network address (8 wrong
+passwords per account / 40 per network / 8 wrong codes per account in 15 minutes; 5 verification-code
+requests per account). Successful sign-ins and page refreshes are never limited, and a blocked person
+sees how long to wait.
 
 ---
 

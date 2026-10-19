@@ -3,8 +3,14 @@ import { useApp } from '../context/AppContext';
 import { Wrench, Mail, Key, ArrowRight, ShieldCheck, HardHat, User, CheckCircle2, AlertTriangle, KeyRound } from 'lucide-react';
 import { ChangePasswordModal } from './ChangePasswordModal';
 
+const DEMO_ICONS = {
+  admin: { icon: ShieldCheck, color: 'text-cyan' },
+  engineer: { icon: HardHat, color: 'text-amber' },
+  customer: { icon: User, color: 'text-emerald' }
+};
+
 export const LoginPage = () => {
-  const { login, authNotice } = useApp();
+  const { login, authNotice, demoMode, demoLogins } = useApp();
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -97,7 +103,7 @@ export const LoginPage = () => {
               <input
                 type="text"
                 className="input"
-                placeholder="e.g. admin@welpack.com or alex@welpack.com"
+                placeholder={demoMode === true ? 'e.g. admin@welpack.com or alex@welpack.com' : 'name@company.com'}
                 value={emailOrPhone}
                 onChange={e => setEmailOrPhone(e.target.value)}
                 style={{ paddingLeft: '40px' }}
@@ -135,44 +141,32 @@ export const LoginPage = () => {
           </button>
         </form>
 
-        {/* Quick Demo Login Buttons */}
-        <div style={{ marginTop: '2rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-          <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '10px', textAlign: 'center' }}>
-            ⚡ 1-Click Role Login Shortcuts:
+        {/* Quick Demo Login Buttons - the server only sends these in demo mode, so a live site has none */}
+        {demoMode === true && demoLogins.length > 0 && (
+          <div style={{ marginTop: '2rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '10px', textAlign: 'center' }}>
+              ⚡ 1-Click Role Login Shortcuts:
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {demoLogins.map((d) => {
+                const Icon = DEMO_ICONS[d.role]?.icon || User;
+                return (
+                  <button
+                    key={d.email}
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ justifyContent: 'flex-start', padding: '0.625rem 1rem' }}
+                    onClick={() => handleQuickLogin(d.email, d.password)}
+                  >
+                    <Icon size={16} className={DEMO_ICONS[d.role]?.color || 'text-cyan'} />
+                    <span>Login as <strong>{d.label}</strong> ({d.email})</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              style={{ justifyContent: 'flex-start', padding: '0.625rem 1rem' }}
-              onClick={() => handleQuickLogin('admin@welpack.com', 'admin123')}
-            >
-              <ShieldCheck size={16} className="text-cyan" />
-              <span>Login as <strong>ADMIN</strong> (admin@welpack.com)</span>
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              style={{ justifyContent: 'flex-start', padding: '0.625rem 1rem' }}
-              onClick={() => handleQuickLogin('alex@welpack.com', 'staff123')}
-            >
-              <HardHat size={16} className="text-amber" />
-              <span>Login as <strong>STAFF ENGINEER</strong> (alex@welpack.com)</span>
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              style={{ justifyContent: 'flex-start', padding: '0.625rem 1rem' }}
-              onClick={() => handleQuickLogin('dmiller@acmesemi.com', 'cust123')}
-            >
-              <User size={16} className="text-emerald" />
-              <span>Login as <strong>CUSTOMER</strong> (dmiller@acmesemi.com)</span>
-            </button>
-          </div>
-        </div>
+        )}
       </div>
 
       <footer style={{ marginTop: '3rem', color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center' }}>

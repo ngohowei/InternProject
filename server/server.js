@@ -8,9 +8,9 @@ dotenv.config({ path: path.join(path.dirname(fileURLToPath(import.meta.url)), '.
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 
 import { connectDB, isDbConnected } from './config/db.js';
+import { isDemoMode, getDemoLogins } from './config/demo.js';
 import { seedDatabase } from './seed.js';
 
 import authRoutes from './routes/authRoutes.js';
@@ -22,6 +22,12 @@ import partRoutes from './routes/partRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Behind a reverse proxy / load balancer, set TRUST_PROXY (e.g. 1) so the visitor's real address is used.
+if (process.env.TRUST_PROXY) {
+  const n = Number(process.env.TRUST_PROXY);
+  app.set('trust proxy', Number.isInteger(n) ? n : process.env.TRUST_PROXY);
+}
 
 // CORS: allow the configured client origin(s), or all in development.
 const clientOrigins = (process.env.CLIENT_ORIGIN || '')
@@ -36,15 +42,17 @@ app.use(helmet());
 app.use('/api/parts/import', express.json({ limit: '1mb' }));
 app.use(express.json({ limit: '100kb' }));
 
-// Throttle auth endpoints (brute force / SMS-email abuse).
-app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false }));
-
 app.use('/api/auth', authRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/requests', requestRoutes);
 app.use('/api/engineers', engineerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/parts', partRoutes);
+
+// Public: tells the web app which demo-only features to show (sign-in shortcuts, Reset Demo)
+app.get('/api/config', (req, res) => {
+  res.json({ demoMode: isDemoMode(), demoLogins: getDemoLogins() });
+});
 
 app.get('/api/health', (req, res) => {
   const connected = isDbConnected();
