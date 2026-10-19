@@ -98,6 +98,41 @@ Run them separately if you prefer: `npm run dev:server` and `npm run dev:web`.
 
 ---
 
+## Running the finished site (and sharing it)
+
+`npm run dev` is for development. To run the real, built site, or to let someone else use it, build it once
+and let the backend serve it - **one program, one port, no Vite**:
+
+```bash
+npm run build     # makes dist/
+npm start         # API + website together on http://localhost:5000
+```
+
+The backend serves `dist/` itself (compressed, with long-lived caching for the hashed files, and a clean 404 for
+unknown addresses). `SERVE_CLIENT=false` turns that off. Rebuild with `npm run build` after changing the front end.
+
+**To give someone a link** (a free Cloudflare quick tunnel; the link changes each time and stops when you close it):
+
+```bash
+cloudflared tunnel --url http://localhost:5000
+```
+
+Share the **5000** port, never the Vite development server (3000): it has known weaknesses that are only acceptable
+on your own machine.
+
+**Before you share, do all of these:**
+
+1. Set `DEMO_MODE=false` in `server/.env` and restart. This removes the 1-click sign-in buttons and Reset Demo,
+   and stops the sample passwords being sent to the browser.
+2. **Change the sample passwords.** They are published in this README and on GitHub, so anyone can try
+   `admin@welpack.com` / `admin123`. Sign in as each account you keep and use **Password** in the header.
+   When `DEMO_MODE=false`, the server prints a warning at startup listing every account that still uses a public
+   sample password.
+3. Behind a real reverse proxy or host (not a quick tunnel)? Also set `NODE_ENV=production` and `TRUST_PROXY=1`.
+4. Replace your Gmail app password / Twilio token if they were ever shown to anyone.
+
+---
+
 ## Demo accounts
 
 In demo mode (`DEMO_MODE=true`) the login page has **1-click role shortcuts**; otherwise sign in manually:
@@ -124,6 +159,7 @@ Run from the repo root:
 | Command             | Description                                     |
 | ------------------- | ---------------------------------------------- |
 | `npm run setup`     | Install root + server dependencies             |
+| `npm start`         | Run API + the built website on port 5000 (after `npm run build`) |
 | `npm run dev`       | Start API + frontend together                  |
 | `npm run dev:web`   | Vite dev server only (port 3000)               |
 | `npm run dev:server`| Express API only (port 5000)                   |
