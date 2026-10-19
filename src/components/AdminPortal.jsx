@@ -200,7 +200,7 @@ export const AdminPortal = () => {
   return (
     <div className="admin-portal">
       {/* Top Banner */}
-      <div style={{
+      <div className="portal-banner" style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',

@@ -185,7 +185,7 @@ export const EngineerPortal = () => {
   return (
     <div className="engineer-portal">
       {/* Top Banner */}
-      <div style={{
+      <div className="portal-banner" style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -569,7 +569,7 @@ export const EngineerPortal = () => {
                   {/* Parts List */}
                   {reportState.partsUsed.length > 0 ? (
                     <>
-                      <table className="data-table" style={{ marginTop: '8px' }}>
+                      <table className="data-table parts-table" style={{ marginTop: '8px' }}>
                         <thead>
                           <tr>
                             <th>Code</th>
@@ -588,7 +588,10 @@ export const EngineerPortal = () => {
                                   ? <span className="text-cyan" style={{ fontWeight: 700 }}>{part.code}</span>
                                   : <span style={{ color: 'var(--text-muted)' }} title="Entered before the parts catalog existed">—</span>}
                               </td>
-                              <td>{part.description}</td>
+                              <td>
+                                {part.description}
+                                {part.code && <div className="part-code-inline font-mono">{part.code}</div>}
+                              </td>
                               <td>
                                 <input
                                   type="number"

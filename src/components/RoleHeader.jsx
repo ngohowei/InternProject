@@ -84,7 +84,7 @@ export const RoleHeader = () => {
           </div>
 
           {/* User / auth bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="header-actions">
             <div style={{
               backgroundColor: 'var(--bg-card)',
               border: '1px solid var(--border-color)',

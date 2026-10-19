@@ -124,7 +124,7 @@ export const CustomerPortal = () => {
   return (
     <div className="customer-portal">
       {/* Top Welcome Banner & CTA */}
-      <div style={{
+      <div className="portal-banner" style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -197,6 +197,7 @@ export const CustomerPortal = () => {
           {filteredRequests.map(req => (
             <div
               key={req.id}
+              className="ticket-card"
               style={{
                 backgroundColor: 'var(--bg-input)',
                 border: '1px solid var(--border-color)',
@@ -211,7 +212,7 @@ export const CustomerPortal = () => {
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', cursor: 'pointer' }}
               >
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
                     <span style={{ color: 'var(--text-muted)', display: 'flex' }}>
                       {expandedIds.has(req.id) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </span>

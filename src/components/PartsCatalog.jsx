@@ -524,7 +524,7 @@ export const PartsCatalog = () => {
                 <div className="text-muted">Checking the file…</div>
               ) : (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '1rem' }}>
+                  <div className="import-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '1rem' }}>
                     {[
                       ['New items', importState.result.created, '#34d399'],
                       ['Will be updated', importState.result.updated, '#38bdf8'],
