@@ -1,8 +1,9 @@
 import { Account, hashPasswordValue } from './models/Account.js';
 import { Engineer } from './models/Engineer.js';
 import { Request } from './models/Request.js';
+import { Part } from './models/Part.js';
 import Counter, { ensureSeqAtLeast } from './models/Counter.js';
-import { ENGINEERS, INITIAL_ACCOUNTS, INITIAL_REQUESTS } from '../src/data/initialData.js';
+import { ENGINEERS, INITIAL_ACCOUNTS, INITIAL_REQUESTS, INITIAL_PARTS } from '../src/data/initialData.js';
 
 const trailingNumber = (str) => {
   const m = String(str).match(/(\d+)\s*$/);
@@ -29,6 +30,38 @@ export const seedDatabase = async () => {
       console.log('✅ Seeded service dispatches');
     }
 
+    if (await Part.countDocuments() === 0) {
+      await Part.insertMany(INITIAL_PARTS);
+      console.log('✅ Seeded parts catalog');
+    }
+
+    // Catalog items saved before categories existed: give the starter items their category and
+    // everything else "General" (the raw update is needed because queries can't match a missing field).
+    const noCategory = await Part.find({ category: { $exists: false } }, 'code');
+    if (noCategory.length > 0) {
+      const starter = new Map(INITIAL_PARTS.map((p) => [p.code, p.category]));
+      await Part.bulkWrite(
+        noCategory.map((p) => ({
+          updateOne: { filter: { _id: p._id }, update: { $set: { category: starter.get(p.code) || 'General' } } }
+        }))
+      );
+      console.log(`✅ Added categories to ${noCategory.length} catalog item(s)`);
+    }
+
+    // Older databases have report lines without an item code. Where a line exactly matches a
+    // catalog item (same name and price), attach that item's code. Safe to run repeatedly.
+    const catalog = await Part.find({});
+    const byKey = new Map(catalog.map((p) => [`${p.name}|${p.unitPrice}`, p.code]));
+    const needCodes = await Request.find({ 'fieldReport.partsUsed': { $elemMatch: { code: { $in: ['', null] } } } });
+    for (const r of needCodes) {
+      let changed = false;
+      for (const line of r.fieldReport.partsUsed) {
+        const code = !line.code && byKey.get(`${line.description}|${line.unitPrice}`);
+        if (code) { line.code = code; changed = true; }
+      }
+      if (changed) { r.markModified('fieldReport.partsUsed'); await r.save(); }
+    }
+
     // Advance ID counters past the highest seeded fixed IDs so generated IDs never collide.
     const engs = await Engineer.find({});
     const custAccts = await Account.find({ role: 'customer' });
@@ -50,6 +83,7 @@ export const resetDatabase = async () => {
     Account.deleteMany({}),
     Engineer.deleteMany({}),
     Request.deleteMany({}),
+    Part.deleteMany({}),
     Counter.deleteMany({})
   ]);
   await seedDatabase();

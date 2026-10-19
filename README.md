@@ -70,7 +70,7 @@ Then edit `server/.env`:
 
 | Variable         | Required | Notes                                                                 |
 | ---------------- | -------- | -------------------------------------------------------------------- |
-| `MONGODB_URI`    | yes\*    | e.g. `mongodb://localhost:27017/apex_fieldeng`                       |
+| `MONGODB_URI`    | yes\*    | e.g. `mongodb://localhost:27017/welpack_fieldeng`                       |
 | `JWT_SECRET`     | yes      | any long random string — `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` |
 | `USE_MEMORY_DB`  | no       | `true` to run without MongoDB (throwaway data)                       |
 | `CLIENT_ORIGIN`  | no       | comma-separated allowed origins; blank = allow all (dev)            |
@@ -102,11 +102,11 @@ The login page has **1-click role shortcuts**, or sign in manually:
 
 | Role     | Email                    | Password   |
 | -------- | ------------------------ | ---------- |
-| Admin    | `admin@apex.com`         | `admin123` |
-| Engineer | `alex@apex.com`          | `staff123` |
+| Admin    | `admin@welpack.com`         | `admin123` |
+| Engineer | `alex@welpack.com`          | `staff123` |
 | Customer | `dmiller@acmesemi.com`   | `cust123`  |
 
-Other seeded engineers (`carlos@`, `priya@`, `marcus@apex.com`) and customers
+Other seeded engineers (`carlos@`, `priya@`, `marcus@welpack.com`) and customers
 (`elena@biopharm.io`, `markus@logixhub.com`) share the same passwords. These are demo
 credentials for local development. Passwords are bcrypt-hashed in the database; an admin
 can reset all data from the header (**Reset Demo**).
@@ -155,7 +155,25 @@ Base URL: `/api` (proxied to `http://localhost:5000` in dev). All routes except
 | `POST /requests/:id/remark`          | any        | Add a work-log note (participants only)   |
 | `POST /requests/:id/rating`          | customer   | Rate a completed job (1–5)                |
 | `PATCH /requests/:id/billing`        | admin      | Send invoice / mark paid                  |
+| `GET  /parts`                        | admin, engineer | Search / filter / sort / page the catalog (see below) |
+| `POST /parts`                        | admin      | Add a catalog item (code, name, price)    |
+| `POST /parts/import`                 | admin      | Add / update many items from a CSV (dry-run preview supported) |
+| `PATCH /parts/:id`                   | admin      | Edit code / name / price, hide or show    |
+| `DELETE /parts/:id`                  | admin      | Delete a catalog item                     |
 | `POST /admin/reset-demo`             | admin      | Wipe and re-seed all data                 |
+
+**Large catalogs:** the catalog is never loaded all at once. `GET /parts` does the work in the database and
+accepts `q` (name or code), `category`, `status` (admin: `active`/`hidden`), `sort` (`code`, `name`, `category`,
+`unitPrice`, `status`), `dir`, `page` and `limit` (max 100). The admin screen has search, category/status filters,
+sortable columns and paging; engineers get a type-ahead search that returns the best matches. Admins can bulk-load
+items with **Import CSV** (columns: `code, name, unitPrice`, optional `category`; up to 2000 rows per file, with a
+preview before anything is saved; an existing code is updated, not duplicated). Categories: Electrical, HVAC,
+Automation, Mechanical, Software, General.
+
+**Parts catalog:** admins maintain items (code, name, unit price). When an engineer logs work they
+search the catalog by name or code and enter only a quantity; the server fills in the name and price
+from the catalog, so prices can't be typed in. Each report line stores a snapshot of the code, name and
+price at the time it was added, so later catalog edits never change work already logged or invoiced.
 
 ---
 

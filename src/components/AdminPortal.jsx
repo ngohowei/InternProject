@@ -27,6 +27,7 @@ import {
   PowerOff
 } from 'lucide-react';
 import { InvoiceModal } from './InvoiceModal';
+import { PartsCatalog } from './PartsCatalog';
 
 export const AdminPortal = () => {
   const {
@@ -42,9 +43,6 @@ export const AdminPortal = () => {
     showNotification,
     toggleEngineerActive
   } = useApp();
-
-  // Only active engineers can be assigned to new requests
-  const activeEngineers = (engineers || []).filter(eng => eng.isActive !== false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -78,7 +76,9 @@ export const AdminPortal = () => {
   const totalCount = (requests || []).length;
   const unassignedCount = (requests || []).filter(r => r?.status === 'Pending').length;
   const inProgressCount = (requests || []).filter(r => r?.status === 'En Route' || r?.status === 'In Progress' || r?.status === 'Assigned').length;
-  const unbilledCount = (requests || []).filter(r => (r?.status === 'Completed' || r?.status === 'Billed') && r?.billing?.billingStatus === 'Unbilled').length;
+  // A job is ready to bill only once the engineer has completed it and no invoice was sent yet.
+  const isReadyToBill = (r) => r?.status === 'Completed' && r?.billing?.billingStatus === 'Unbilled';
+  const unbilledCount = (requests || []).filter(isReadyToBill).length;
 
   const totalRevenue = (requests || []).reduce((sum, r) => {
     if (r?.billing?.billingStatus === 'Paid' || r?.billing?.billingStatus === 'Invoice Sent') {
@@ -114,7 +114,7 @@ export const AdminPortal = () => {
 
     let matchesStatus = true;
     if (statusFilter === 'UNASSIGNED') matchesStatus = req.status === 'Pending';
-    else if (statusFilter === 'UNBILLED') matchesStatus = req.billing?.billingStatus === 'Unbilled' && (req.status === 'Completed' || req.status === 'In Progress');
+    else if (statusFilter === 'UNBILLED') matchesStatus = isReadyToBill(req);
     else if (statusFilter !== 'ALL') matchesStatus = req.status === statusFilter;
 
     return matchesSearch && matchesEng && matchesStatus;
@@ -190,7 +190,7 @@ export const AdminPortal = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Apex_FieldEng_Dispatches_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `Welpack_FieldEng_Dispatches_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -467,9 +467,12 @@ export const AdminPortal = () => {
 
                   <td>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {/* Locked once the engineer has finished the job (completed / invoiced / paid) */}
                       <select
                         className="select"
                         value={req.assignedEngineerId || ''}
+                        disabled={['Completed', 'Billed', 'Paid'].includes(req.status)}
+                        title={['Completed', 'Billed', 'Paid'].includes(req.status) ? 'This job is finished, so the engineer can no longer be changed' : undefined}
                         onChange={e => assignEngineerToRequest(req.id, e.target.value)}
                         style={{
                           fontSize: '0.8rem',
@@ -477,12 +480,15 @@ export const AdminPortal = () => {
                           borderColor: !req.assignedEngineerId ? '#f59e0b' : 'var(--border-color)'
                         }}
                       >
-                        <option value="">-- Assign Engineer --</option>
-                        {activeEngineers.map(eng => (
-                          <option key={eng.id} value={eng.id}>
-                            {eng.name} ({eng.specialty})
-                          </option>
-                        ))}
+                        <option value="" disabled>-- Assign Engineer --</option>
+                        {/* keep the current engineer visible even if they were deactivated */}
+                        {(engineers || [])
+                          .filter(eng => eng.isActive !== false || eng.id === req.assignedEngineerId)
+                          .map(eng => (
+                            <option key={eng.id} value={eng.id} disabled={eng.isActive === false}>
+                              {eng.name} ({eng.specialty}){eng.isActive === false ? ' - inactive' : ''}
+                            </option>
+                          ))}
                       </select>
                       {req.assignedEngineerName && (
                         <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -527,7 +533,7 @@ export const AdminPortal = () => {
                         <FileText size={14} /> Invoice
                       </button>
 
-                      {req.billing?.billingStatus === 'Unbilled' && (req.status === 'Completed' || req.status === 'In Progress') && (
+                      {isReadyToBill(req) && (
                         <button
                           className="btn btn-primary btn-sm"
                           onClick={() => {
@@ -556,6 +562,9 @@ export const AdminPortal = () => {
           </table>
         </div>
       </div>
+
+      {/* Parts catalog (search, filters, paging, CSV import) */}
+      <PartsCatalog />
 
       {/* Admin User Account Management Section */}
       <div className="card">
@@ -720,7 +729,7 @@ export const AdminPortal = () => {
                     <input
                       type="text"
                       className="input"
-                      placeholder="e.g. Apex Industrial Energy Corp"
+                      placeholder="e.g. Welpack Industrial Energy Corp"
                       value={custForm.customerName}
                       onChange={e => setCustForm({ ...custForm, customerName: e.target.value })}
                       required
@@ -745,7 +754,7 @@ export const AdminPortal = () => {
                       <input
                         type="email"
                         className="input"
-                        placeholder="rsmith@apexenergy.com"
+                        placeholder="rsmith@welpackenergy.com"
                         value={custForm.email}
                         onChange={e => setCustForm({ ...custForm, email: e.target.value })}
                         required
@@ -827,7 +836,7 @@ export const AdminPortal = () => {
                       <input
                         type="email"
                         className="input"
-                        placeholder="turing@apex.com"
+                        placeholder="turing@welpack.com"
                         value={engForm.email}
                         onChange={e => setEngForm({ ...engForm, email: e.target.value })}
                         required

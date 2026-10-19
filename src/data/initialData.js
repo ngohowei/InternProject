@@ -5,7 +5,7 @@ export const ENGINEERS = [
     role: 'Senior Staff Electrical Engineer',
     specialty: 'High Voltage & Power Distribution',
     phone: '+1 (555) 234-5678',
-    email: 'alex@apex.com',
+    email: 'alex@welpack.com',
     status: 'Busy',
     activeJobs: 2,
     hourlyRate: 120
@@ -16,7 +16,7 @@ export const ENGINEERS = [
     role: 'Staff HVAC Specialist',
     specialty: 'Industrial Chillers & Cleanrooms',
     phone: '+1 (555) 345-6789',
-    email: 'carlos@apex.com',
+    email: 'carlos@welpack.com',
     status: 'Available',
     activeJobs: 0,
     hourlyRate: 110
@@ -27,7 +27,7 @@ export const ENGINEERS = [
     role: 'Staff Automation Systems Engineer',
     specialty: 'Siemens PLC & Robotics Control',
     phone: '+1 (555) 456-7890',
-    email: 'priya@apex.com',
+    email: 'priya@welpack.com',
     status: 'On Site',
     activeJobs: 1,
     hourlyRate: 135
@@ -38,7 +38,7 @@ export const ENGINEERS = [
     role: 'Field Service Staff Mechanic',
     specialty: 'Pumps, Compressors & Hydraulics',
     phone: '+1 (555) 567-8901',
-    email: 'marcus@apex.com',
+    email: 'marcus@welpack.com',
     status: 'Available',
     activeJobs: 0,
     hourlyRate: 95
@@ -49,17 +49,17 @@ export const INITIAL_ACCOUNTS = [
   {
     id: 'ACC-ADM-01',
     name: 'Sarah Jenkins (Operations Mgr)',
-    email: 'admin@apex.com',
+    email: 'admin@welpack.com',
     phone: '+1 (555) 000-1111',
     password: 'admin123',
     role: 'admin', // DATABASE ROLE ROW: admin
-    customerName: 'Apex Operations Admin',
+    customerName: 'Welpack Operations Admin',
     createdAt: '2026-01-01'
   },
   {
     id: 'ACC-STAFF-101',
     name: 'Alex Wong',
-    email: 'alex@apex.com',
+    email: 'alex@welpack.com',
     phone: '+1 (555) 234-5678',
     password: 'staff123',
     role: 'staff', // DATABASE ROLE ROW: staff (engineer)
@@ -69,7 +69,7 @@ export const INITIAL_ACCOUNTS = [
   {
     id: 'ACC-STAFF-102',
     name: 'Carlos Mendoza',
-    email: 'carlos@apex.com',
+    email: 'carlos@welpack.com',
     phone: '+1 (555) 345-6789',
     password: 'staff123',
     role: 'staff', // DATABASE ROLE ROW: staff (engineer)
@@ -153,8 +153,8 @@ export const INITIAL_REQUESTS = [
       hoursSpent: 3.5,
       diagnosis: 'Blown secondary 400A high-speed fuses and damaged surge protection unit.',
       partsUsed: [
-        { description: 'Industrial 400A Semiconductor Fuse (Pack of 3)', qty: 1, unitPrice: 240 },
-        { description: 'Heavy-Duty MOV Surge Protection Module', qty: 1, unitPrice: 380 }
+        { code: 'FUSE-400A', description: 'Industrial 400A Semiconductor Fuse (Pack of 3)', qty: 1, unitPrice: 240 },
+        { code: 'MOV-HD', description: 'Heavy-Duty MOV Surge Protection Module', qty: 1, unitPrice: 380 }
       ],
       completedAt: null
     },
@@ -185,7 +185,7 @@ export const INITIAL_REQUESTS = [
     location: 'Lab Annex 2, Temperature Cold Room',
     description: 'Cold storage unit #3 reporting pressure drop warning. Temperature currently 4°C above safety limit.',
     dateSubmitted: '2026-08-06 02:30 PM',
-    status: 'Completed',
+    status: 'Billed',
     assignedEngineerId: 'ENG-102',
     assignedEngineerName: 'Carlos Mendoza',
 
@@ -214,8 +214,8 @@ export const INITIAL_REQUESTS = [
       hoursSpent: 2.5,
       diagnosis: 'Micro-crack in expansion valve copper flange causing slow refrigerant bleed.',
       partsUsed: [
-        { description: 'R-410A Refrigerant Canister (10kg)', qty: 1, unitPrice: 180 },
-        { description: 'Brass Flange Fitting & O-Ring Seal Kit', qty: 2, unitPrice: 35 }
+        { code: 'REF-R410A', description: 'R-410A Refrigerant Canister (10kg)', qty: 1, unitPrice: 180 },
+        { code: 'KIT-FLG', description: 'Brass Flange Fitting & O-Ring Seal Kit', qty: 2, unitPrice: 35 }
       ],
       completedAt: '2026-08-06 05:00 PM'
     },
@@ -263,12 +263,28 @@ export const INITIAL_REQUESTS = [
       totalHours: 0,
       laborTotal: 0,
       partsTotal: 0,
-      subtotal: 150,
-      tax: 12,
-      grandTotal: 162,
+      subtotal: 0,
+      tax: 0,
+      grandTotal: 0,
       billingStatus: 'Unbilled',
       invoiceNumber: '',
       invoiceDate: null
     }
   }
+];
+
+// Starting parts catalog. Admins can add / edit / deactivate items in the Admin portal.
+export const INITIAL_PARTS = [
+  { code: 'FUSE-400A', name: 'Industrial 400A Semiconductor Fuse (Pack of 3)', category: 'Electrical', unitPrice: 240 },
+  { code: 'MOV-HD', name: 'Heavy-Duty MOV Surge Protection Module', category: 'Electrical', unitPrice: 380 },
+  { code: 'REF-R410A', name: 'R-410A Refrigerant Canister (10kg)', category: 'HVAC', unitPrice: 180 },
+  { code: 'KIT-FLG', name: 'Brass Flange Fitting & O-Ring Seal Kit', category: 'Mechanical', unitPrice: 35 },
+  { code: 'RLY-24V', name: 'Control Relay 24V DC', category: 'Electrical', unitPrice: 45 },
+  { code: 'CNT-3P40', name: 'Contactor 3-Pole 40A', category: 'Electrical', unitPrice: 120 },
+  { code: 'FLT-HEPA', name: 'HEPA Filter Cartridge', category: 'HVAC', unitPrice: 95 },
+  { code: 'SNS-OPT', name: 'Optical Proximity Sensor', category: 'Automation', unitPrice: 85 },
+  { code: 'BLT-V', name: 'Drive Belt (V-Type)', category: 'Mechanical', unitPrice: 28 },
+  { code: 'THM-DIG', name: 'Digital Thermostat Controller', category: 'HVAC', unitPrice: 150 },
+  { code: 'LUB-ISO', name: 'Industrial Lubricant (1 L)', category: 'Mechanical', unitPrice: 22 },
+  { code: 'CBL-CAT6', name: 'Industrial Cat6 Cable (per 10 m)', category: 'Software', unitPrice: 18 }
 ];

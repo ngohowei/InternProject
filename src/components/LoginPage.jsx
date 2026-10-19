@@ -4,7 +4,7 @@ import { Wrench, Mail, Key, ArrowRight, ShieldCheck, HardHat, User, CheckCircle2
 import { ChangePasswordModal } from './ChangePasswordModal';
 
 export const LoginPage = () => {
-  const { login, accounts } = useApp();
+  const { login, authNotice } = useApp();
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -15,14 +15,18 @@ export const LoginPage = () => {
     setErrorMsg('');
     const res = await login(emailOrPhone, password);
     if (!res || !res.success) {
-      setErrorMsg('Invalid email/phone or password. Please check your credentials.');
+      setErrorMsg(res?.error || 'Unable to sign in. Please try again.');
     }
   };
 
   const handleQuickLogin = async (email, pass) => {
     setEmailOrPhone(email);
     setPassword(pass);
-    await login(email, pass);
+    setErrorMsg('');
+    const res = await login(email, pass);
+    if (!res || !res.success) {
+      setErrorMsg(res?.error || 'Unable to sign in. Please try again.');
+    }
   };
 
   return (
@@ -70,7 +74,7 @@ export const LoginPage = () => {
           </p>
         </div>
 
-        {errorMsg && (
+        {(errorMsg || authNotice) && (
           <div style={{
             backgroundColor: 'rgba(239, 68, 68, 0.15)',
             border: '1px solid #ef4444',
@@ -81,7 +85,7 @@ export const LoginPage = () => {
             marginBottom: '1.25rem'
           }}>
             <AlertTriangle size={14} style={{ display: 'inline', marginRight: '6px' }} />
-            {errorMsg}
+            {errorMsg || authNotice}
           </div>
         )}
 
@@ -93,7 +97,7 @@ export const LoginPage = () => {
               <input
                 type="text"
                 className="input"
-                placeholder="e.g. admin@apex.com or alex@apex.com"
+                placeholder="e.g. admin@welpack.com or alex@welpack.com"
                 value={emailOrPhone}
                 onChange={e => setEmailOrPhone(e.target.value)}
                 style={{ paddingLeft: '40px' }}
@@ -142,20 +146,20 @@ export const LoginPage = () => {
               type="button"
               className="btn btn-secondary btn-sm"
               style={{ justifyContent: 'flex-start', padding: '0.625rem 1rem' }}
-              onClick={() => handleQuickLogin('admin@apex.com', 'admin123')}
+              onClick={() => handleQuickLogin('admin@welpack.com', 'admin123')}
             >
               <ShieldCheck size={16} className="text-cyan" />
-              <span>Login as <strong>ADMIN</strong> (admin@apex.com)</span>
+              <span>Login as <strong>ADMIN</strong> (admin@welpack.com)</span>
             </button>
 
             <button
               type="button"
               className="btn btn-secondary btn-sm"
               style={{ justifyContent: 'flex-start', padding: '0.625rem 1rem' }}
-              onClick={() => handleQuickLogin('alex@apex.com', 'staff123')}
+              onClick={() => handleQuickLogin('alex@welpack.com', 'staff123')}
             >
               <HardHat size={16} className="text-amber" />
-              <span>Login as <strong>STAFF ENGINEER</strong> (alex@apex.com)</span>
+              <span>Login as <strong>STAFF ENGINEER</strong> (alex@welpack.com)</span>
             </button>
 
             <button

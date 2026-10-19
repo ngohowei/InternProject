@@ -120,7 +120,7 @@ export const InvoiceModal = ({ request, onClose }) => {
                 {/* Parts */}
                 {fieldReport?.partsUsed?.map((part, idx) => (
                   <tr key={idx}>
-                    <td>Parts: {part.description}</td>
+                    <td>Parts: {part.description}{part.code ? ` [${part.code}]` : ''}</td>
                     <td style={{ textAlign: 'center' }}>{part.qty}</td>
                     <td style={{ textAlign: 'right' }}>${part.unitPrice.toFixed(2)}</td>
                     <td style={{ textAlign: 'right' }}>${(part.qty * part.unitPrice).toFixed(2)}</td>
@@ -152,7 +152,7 @@ export const InvoiceModal = ({ request, onClose }) => {
             <Printer size={16} /> Print / Save PDF
           </button>
 
-          {currentRole === 'admin' && billing.billingStatus === 'Unbilled' && (
+          {currentRole === 'admin' && billing.billingStatus === 'Unbilled' && request.status === 'Completed' && (
             <button 
               className="btn btn-primary" 
               onClick={async () => {

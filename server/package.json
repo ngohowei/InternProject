@@ -1,5 +1,5 @@
 {
-  "name": "apex-fieldeng-server",
+  "name": "welpack-fieldeng-server",
   "version": "1.0.0",
   "description": "MongoDB Backend REST API for Field Engineering Dispatch & Billing",
   "main": "server.js",

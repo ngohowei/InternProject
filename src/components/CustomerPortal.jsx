@@ -418,8 +418,10 @@ export const CustomerPortal = () => {
                     <input
                       type="text"
                       className="input"
-                      value={formData.customerName}
-                      onChange={e => setFormData({ ...formData, customerName: e.target.value })}
+                      value={currentUser?.customerName || formData.customerName}
+                      readOnly
+                      title="Your company is set by your account"
+                      style={{ opacity: 0.7, cursor: 'not-allowed' }}
                     />
                   </div>
 

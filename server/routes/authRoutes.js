@@ -2,7 +2,7 @@ import express from 'express';
 import twilio from 'twilio';
 import nodemailer from 'nodemailer';
 import { Account } from '../models/Account.js';
-import { signToken, requireAuth } from '../middleware/auth.js';
+import { signToken, requireAuth, isEngineerActive, DEACTIVATED_MESSAGE } from '../middleware/auth.js';
 
 const router = express.Router();
 const isProd = () => process.env.NODE_ENV === 'production';
@@ -59,6 +59,12 @@ router.post('/login', async (req, res) => {
     const account = await findAccount(emailOrPhone);
     if (!account || !(await account.verifyPassword(String(password)))) {
       return res.status(401).json({ success: false, error: 'Invalid email/phone or password' });
+    }
+
+    // A deactivated engineer must not be able to sign in (checked after the password so
+    // the message is only revealed to someone who actually knows the credentials).
+    if (account.role === 'staff' && !(await isEngineerActive(account.engineerId))) {
+      return res.status(403).json({ success: false, code: 'DEACTIVATED', error: DEACTIVATED_MESSAGE });
     }
 
     // 'staff' is the DB role; the client-facing role is 'engineer'

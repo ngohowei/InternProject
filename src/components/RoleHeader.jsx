@@ -34,7 +34,7 @@ export const RoleHeader = () => {
 
   const unassignedCount = requests.filter(r => r.status === 'Pending').length;
   const unbilledCount = requests.filter(
-    r => (r.status === 'Completed' || r.status === 'Billed') && r.billing?.billingStatus === 'Unbilled'
+    r => r.status === 'Completed' && r.billing?.billingStatus === 'Unbilled'
   ).length;
 
   const meta = ROLE_META[currentRole] || ROLE_META.customer;

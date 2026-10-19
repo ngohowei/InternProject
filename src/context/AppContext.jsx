@@ -19,6 +19,8 @@ export const AppProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [currentRole, setCurrentRole] = useState(null);
   const [authReady, setAuthReady] = useState(false);
+  // Why the user was signed out (expired session / deactivated account); shown on the login page.
+  const [authNotice, setAuthNotice] = useState('');
 
   const [selectedEngineerId, setSelectedEngineerId] = useState(null);
   const [notification, setNotification] = useState(null);
@@ -28,7 +30,8 @@ export const AppProvider = ({ children }) => {
     setTimeout(() => setNotification(null), 4000);
   }, []);
 
-  // Central fetch helper: injects the auth header, parses JSON safely, handles 401.
+  // Central fetch helper: injects the auth header, parses JSON safely, and ends the session
+  // when the server says it is no longer valid (expired token, or account deactivated).
   const apiFetch = useCallback(async (path, options = {}) => {
     const token = getToken();
     const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
@@ -41,30 +44,48 @@ export const AppProvider = ({ children }) => {
       return { success: false, error: 'Cannot reach the server. Is the backend running?' };
     }
 
-    if (res.status === 401) {
-      setStoredToken(null);
-      setCurrentUser(null);
-      setCurrentRole(null);
-      return { success: false, error: 'Your session has expired. Please sign in again.' };
-    }
-
+    let body;
     const contentType = res.headers.get('content-type') || '';
     if (!contentType.includes('application/json')) {
-      return { success: false, error: `Server returned ${res.status}.` };
+      // A non-JSON 5xx here is the dev proxy / tunnel failing to reach the backend, not our API.
+      if (res.status >= 500) {
+        return { success: false, error: 'The server is not responding. Please make sure the backend is running, then try again.' };
+      }
+      return { success: false, error: `Unexpected response from the server (${res.status}).` };
     }
     try {
-      return await res.json();
+      body = await res.json();
     } catch {
       return { success: false, error: 'Invalid response from server.' };
     }
+
+    const endSession = (notice) => {
+      setStoredToken(null);
+      setCurrentUser(null);
+      setCurrentRole(null);
+      setAuthNotice(notice);
+    };
+
+    // Sign-in / password forms legitimately return 401 for a wrong password - that is not an
+    // expired session, so only treat 401 as "session over" for normal authenticated calls.
+    const isAuthForm = path.startsWith('/auth/') && path !== '/auth/me';
+    if (res.status === 401 && token && !isAuthForm) {
+      endSession('Your session has expired. Please sign in again.');
+      return { success: false, error: 'Your session has expired. Please sign in again.' };
+    }
+    if (res.status === 403 && body?.code === 'DEACTIVATED' && token && !isAuthForm) {
+      endSession(body.error);
+    }
+    return body;
   }, []);
 
   // Load the data the current role is allowed to see.
   const refreshData = useCallback(async (role = currentRole) => {
-    const calls = [apiFetch('/requests'), apiFetch('/engineers')];
-    if (role === 'admin') calls.push(apiFetch('/accounts'));
-
-    const [reqData, engData, accData] = await Promise.all(calls);
+    const [reqData, engData, accData] = await Promise.all([
+      apiFetch('/requests'),
+      apiFetch('/engineers'),
+      role === 'admin' ? apiFetch('/accounts') : null
+    ]);
     if (reqData?.success) setRequests(reqData.requests);
     if (engData?.success) setEngineers(engData.engineers);
     if (accData?.success) setAccounts(accData.accounts);
@@ -104,6 +125,7 @@ export const AppProvider = ({ children }) => {
 
     if (data?.success) {
       setStoredToken(data.token);
+      setAuthNotice('');
       const role = applySession(data.account);
       await refreshData(role);
       showNotification(`Signed in as ${role.toUpperCase()} (${data.account.name})`);
@@ -300,6 +322,44 @@ export const AppProvider = ({ children }) => {
     return false;
   };
 
+  // Parts catalog. The catalog can be large, so it is never loaded all at once: each screen asks the
+  // server for just the page / search results it needs.
+  const fetchParts = useCallback(async (params = {}) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '' && v !== 'ALL') qs.set(k, String(v));
+    });
+    return apiFetch('/parts' + (qs.toString() ? '?' + qs.toString() : ''));
+  }, [apiFetch]);
+
+  // Admin: add (no partId) or edit an item. Returns true on success; the caller reloads its list.
+  const savePart = async (fields, partId = null) => {
+    const data = await apiFetch(partId ? '/parts/' + partId : '/parts', {
+      method: partId ? 'PATCH' : 'POST',
+      body: JSON.stringify(fields)
+    });
+    if (data?.success) {
+      showNotification(partId ? 'Item ' + data.part.code + ' updated' : 'Item ' + data.part.code + ' added to the catalog');
+      return true;
+    }
+    showNotification(data?.error || 'Failed to save item', 'error');
+    return false;
+  };
+
+  const deletePart = async (partId) => {
+    const data = await apiFetch('/parts/' + partId, { method: 'DELETE' });
+    if (data?.success) {
+      showNotification(data.message || 'Item deleted');
+      return true;
+    }
+    showNotification(data?.error || 'Failed to delete item', 'error');
+    return false;
+  };
+
+  // Admin: bulk add / update from a CSV file. dryRun=true only reports what would happen.
+  const importParts = async (items, dryRun) =>
+    apiFetch('/parts/import', { method: 'POST', body: JSON.stringify({ items, dryRun }) });
+
   const resetDemo = async () => {
     const data = await apiFetch('/admin/reset-demo', { method: 'POST' });
     if (data?.success) {
@@ -317,6 +377,7 @@ export const AppProvider = ({ children }) => {
       currentUser,
       currentRole,
       authReady,
+      authNotice,
       selectedEngineerId,
       setSelectedEngineerId,
       engineers,
@@ -338,6 +399,10 @@ export const AppProvider = ({ children }) => {
       markInvoiceSent,
       markInvoicePaid,
       toggleEngineerActive,
+      fetchParts,
+      savePart,
+      deletePart,
+      importParts,
       resetDemo,
       refreshData,
       showNotification

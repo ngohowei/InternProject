@@ -8,6 +8,7 @@ const workLogSchema = new mongoose.Schema({
 }, { _id: false });
 
 const partItemSchema = new mongoose.Schema({
+  code: { type: String, default: '' }, // catalog item code ('' for older free-text lines)
   description: { type: String, required: true },
   qty: { type: Number, required: true, default: 1 },
   unitPrice: { type: Number, required: true, default: 0 }
