@@ -77,6 +77,26 @@ export const INITIAL_ACCOUNTS = [
     createdAt: '2026-01-01'
   },
   {
+    id: 'ACC-STAFF-103',
+    name: 'Priya Sharma',
+    email: 'priya@welpack.com',
+    phone: '+1 (555) 456-7890',
+    password: 'staff123',
+    role: 'staff', // DATABASE ROLE ROW: staff (engineer)
+    engineerId: 'ENG-103',
+    createdAt: '2026-01-01'
+  },
+  {
+    id: 'ACC-STAFF-104',
+    name: 'Marcus Vance',
+    email: 'marcus@welpack.com',
+    phone: '+1 (555) 567-8901',
+    password: 'staff123',
+    role: 'staff', // DATABASE ROLE ROW: staff (engineer)
+    engineerId: 'ENG-104',
+    createdAt: '2026-01-01'
+  },
+  {
     id: 'ACC-CUST-01',
     name: 'David Miller (Plant Dir)',
     email: 'dmiller@acmesemi.com',

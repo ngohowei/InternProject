@@ -3,6 +3,7 @@ import { Engineer } from './models/Engineer.js';
 import { Request } from './models/Request.js';
 import { Part } from './models/Part.js';
 import Counter, { ensureSeqAtLeast } from './models/Counter.js';
+import { isDemoMode } from './config/demo.js';
 import { ENGINEERS, INITIAL_ACCOUNTS, INITIAL_REQUESTS, INITIAL_PARTS } from '../src/data/initialData.js';
 
 const trailingNumber = (str) => {
@@ -23,6 +24,22 @@ export const seedDatabase = async () => {
     if (await Engineer.countDocuments() === 0) {
       await Engineer.insertMany(ENGINEERS.map((e) => ({ isActive: true, ...e })));
       console.log('✅ Seeded staff engineer roster');
+    }
+
+    // Demo databases created before every sample engineer had a login: add the missing engineer logins
+    // (matched by email; existing accounts are never touched). Only in demo mode, so a live database
+    // never gets accounts with a well-known password.
+    if (isDemoMode()) {
+      const haveEmails = new Set((await Account.find({}, 'email')).map((a) => a.email));
+      const haveEngineers = new Set((await Engineer.find({}, 'id')).map((e) => e.id));
+      const missing = INITIAL_ACCOUNTS.filter(
+        (a) => a.role === 'staff' && !haveEmails.has(a.email) && haveEngineers.has(a.engineerId)
+      );
+      if (missing.length > 0) {
+        const hashed = await Promise.all(missing.map(async (a) => ({ ...a, password: await hashPasswordValue(a.password) })));
+        await Account.insertMany(hashed);
+        console.log(`✅ Added login(s) for sample engineer(s): ${missing.map((a) => a.email).join(', ')}`);
+      }
     }
 
     if (await Request.countDocuments() === 0) {
