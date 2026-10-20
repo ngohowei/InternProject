@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Wrench, Mail, Key, ArrowRight, ShieldCheck, HardHat, User, CheckCircle2, AlertTriangle, KeyRound } from 'lucide-react';
+import { Wrench, Mail, Key, ArrowRight, ShieldCheck, HardHat, User, CheckCircle2, AlertTriangle, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { ChangePasswordModal } from './ChangePasswordModal';
 
 const DEMO_ICONS = {
@@ -15,6 +15,7 @@ export const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [showPassModal, setShowPassModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,7 +37,7 @@ export const LoginPage = () => {
   };
 
   return (
-    <div style={{
+    <div className="login-page" style={{
       minHeight: '100vh',
       backgroundColor: 'var(--bg-primary)',
       display: 'flex',
@@ -48,7 +49,7 @@ export const LoginPage = () => {
       backgroundImage: 'radial-gradient(circle at 50% 20%, rgba(59, 130, 246, 0.12) 0%, transparent 60%)'
     }}>
       {/* Company Branding Banner */}
-      <div style={{ textAlign: 'center', marginBottom: '2.5rem', maxWidth: '600px' }}>
+      <div className="login-brand" style={{ textAlign: 'center', marginBottom: '2.5rem', maxWidth: '600px' }}>
         <div style={{
           width: '64px',
           height: '64px',
@@ -63,7 +64,7 @@ export const LoginPage = () => {
         }}>
           <Wrench size={34} />
         </div>
-        <h1 style={{ fontSize: '2.4rem', fontWeight: 800, background: 'linear-gradient(to right, #ffffff, #93c5fd)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+        <h1 className="login-title" style={{ fontSize: '2.4rem', fontWeight: 800, background: 'linear-gradient(to right, #ffffff, #93c5fd)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
           Welpack Engineering
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '6px' }}>
@@ -72,7 +73,7 @@ export const LoginPage = () => {
       </div>
 
       {/* Main Login Box */}
-      <div className="card" style={{ maxWidth: '480px', width: '100%', padding: '2.25rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
+      <div className="card login-card" style={{ maxWidth: '480px', width: '100%', padding: '2.25rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Company Portal Login</h2>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
@@ -103,7 +104,12 @@ export const LoginPage = () => {
               <input
                 type="text"
                 className="input"
-                placeholder={demoMode === true ? 'e.g. admin@welpack.com or alex@welpack.com' : 'name@company.com'}
+                placeholder={demoMode === true ? 'e.g. admin@welpack.com' : 'name@company.com'}
+                inputMode="email"
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 value={emailOrPhone}
                 onChange={e => setEmailOrPhone(e.target.value)}
                 style={{ paddingLeft: '40px' }}
@@ -113,26 +119,35 @@ export const LoginPage = () => {
           </div>
 
           <div className="form-group">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.375rem' }}>
               <label className="form-label" style={{ marginBottom: 0 }}>Password</label>
-              <span
-                style={{ color: 'var(--accent-cyan)', cursor: 'pointer', fontSize: '0.8rem' }}
-                onClick={() => setShowPassModal(true)}
-              >
+              <button type="button" className="link-btn" onClick={() => setShowPassModal(true)}>
                 Change / Reset Password?
-              </span>
+              </button>
             </div>
             <div style={{ position: 'relative' }}>
               <Key size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 className="input"
                 placeholder="Enter password"
+                autoComplete="current-password"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                style={{ paddingLeft: '40px' }}
+                style={{ paddingLeft: '40px', paddingRight: '48px' }}
                 required
               />
+              <button
+                type="button"
+                className="eye-btn"
+                onClick={() => setShowPassword(v => !v)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 

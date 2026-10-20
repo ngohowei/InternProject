@@ -38,6 +38,9 @@ export const EngineerPortal = ({ mobile = false, tab = 'active' }) => {
   const [editingJob, setEditingJob] = useState(null);
   const [selectedInvoiceReq, setSelectedInvoiceReq] = useState(null);
   const [remarkText, setRemarkText] = useState({});
+  const [allLogs, setAllLogs] = useState(() => new Set()); // jobs whose full log is shown (phone shows the latest 3)
+  const toggleLogs = (id) => setAllLogs(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  const shownLogs = (job) => (mobile && job.workLog.length > 3 && !allLogs.has(job.id) ? job.workLog.slice(-3) : job.workLog);
 
   // Per-card expand/collapse. Default: active dispatches expanded, completed
   // history collapsed so a long job history stays easy to scan.
@@ -375,7 +378,7 @@ export const EngineerPortal = ({ mobile = false, tab = 'active' }) => {
               </div>
 
               <div className="remarks-timeline">
-                {job.workLog.map((log, idx) => (
+                {shownLogs(job).map((log, idx) => (
                   <div key={idx} className="remark-item">
                     <div className="remark-header">
                       <span className="remark-author">{log.author} ({log.role})</span>
@@ -386,8 +389,14 @@ export const EngineerPortal = ({ mobile = false, tab = 'active' }) => {
                 ))}
               </div>
 
+              {mobile && job.workLog.length > 3 && (
+                <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: '8px' }} onClick={() => toggleLogs(job.id)}>
+                  {allLogs.has(job.id) ? 'Show fewer updates' : `Show ${job.workLog.length - 3} earlier updates`}
+                </button>
+              )}
+
               {/* Add Quick Field Remark */}
-              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+              <div className="remark-input-row" style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                 <input 
                   type="text" 
                   className="input" 

@@ -19,6 +19,9 @@ import {
 import { InvoiceModal } from './InvoiceModal';
 import { PhotoPicker, RequestPhotos } from './RequestPhotos';
 
+const STEP_OF = { Pending: 1, Assigned: 2, 'En Route': 3, 'In Progress': 4, Completed: 5, Billed: 6, Paid: 6 };
+const STEP_NAMES = ['Submitted', 'Assigned', 'En Route', 'On Site', 'Completed', 'Billed / Paid'];
+
 // mobile: drawn for the phone layout (no banner, roomier touch targets). newRequestTick: the phone's "New" tab
 // bumps this number to open the request form.
 export const CustomerPortal = ({ mobile = false, newRequestTick = 0 }) => {
@@ -27,6 +30,7 @@ export const CustomerPortal = ({ mobile = false, newRequestTick = 0 }) => {
   const [selectedInvoiceReq, setSelectedInvoiceReq] = useState(null);
   const [ratingModalReq, setRatingModalReq] = useState(null);
   const [remarkInput, setRemarkInput] = useState({});
+  const [allLogs, setAllLogs] = useState(() => new Set()); // tickets whose full update history is shown (phone shows the latest 3)
   const [newPhotos, setNewPhotos] = useState([]); // optional pictures for the request being written: [{ blob, url }]
 
   const lastTick = useRef(newRequestTick);
@@ -40,6 +44,15 @@ export const CustomerPortal = ({ mobile = false, newRequestTick = 0 }) => {
   // Which dispatch cards are expanded (collapsed by default so long service
   // histories stay easy to scan)
   const [expandedIds, setExpandedIds] = useState(() => new Set());
+
+  const toggleLogs = (id) => {
+    setAllLogs(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const shownLogs = (req) => (mobile && req.workLog.length > 3 && !allLogs.has(req.id) ? req.workLog.slice(-3) : req.workLog);
 
   const toggleCard = (id) => {
     setExpandedIds(prev => {
@@ -286,6 +299,11 @@ export const CustomerPortal = ({ mobile = false, newRequestTick = 0 }) => {
               </div>
 
               {/* Progress Tracker Stepper */}
+              {mobile && (
+                <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  Step <strong style={{ color: 'var(--text-main)' }}>{STEP_OF[req.status] || 1} of 6</strong> &middot; {STEP_NAMES[(STEP_OF[req.status] || 1) - 1]}
+                </div>
+              )}
               <div className="progress-stepper">
                 <div
                   className="progress-line-active"
@@ -336,7 +354,7 @@ export const CustomerPortal = ({ mobile = false, newRequestTick = 0 }) => {
                 </h4>
 
                 <div className="remarks-timeline">
-                  {req.workLog.map((log, idx) => (
+                  {shownLogs(req).map((log, idx) => (
                     <div key={idx} className="remark-item">
                       <div className="remark-header">
                         <span className="remark-author">{log.author} ({log.role})</span>
@@ -346,6 +364,12 @@ export const CustomerPortal = ({ mobile = false, newRequestTick = 0 }) => {
                     </div>
                   ))}
                 </div>
+
+                {mobile && req.workLog.length > 3 && (
+                  <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: '8px' }} onClick={() => toggleLogs(req.id)}>
+                    {allLogs.has(req.id) ? 'Show fewer updates' : `Show ${req.workLog.length - 3} earlier updates`}
+                  </button>
+                )}
 
                 {/* Add Customer Remark Box */}
                 <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
@@ -530,7 +554,7 @@ export const CustomerPortal = ({ mobile = false, newRequestTick = 0 }) => {
                     {[1, 2, 3, 4, 5].map(star => (
                       <button
                         type="button"
-                        key={star}
+                        key={star} className="star-btn"
                         style={{
                           background: 'none',
                           border: 'none',

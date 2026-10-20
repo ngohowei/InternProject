@@ -111,7 +111,7 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
                 <input 
                   type="text" 
                   className="input" 
-                  placeholder="e.g. dmiller@acmesemi.com or +1 (555) 901-2345" 
+                  inputMode="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="e.g. dmiller@acmesemi.com or +1 (555) 901-2345" 
                   value={emailOrPhone}
                   onChange={e => {
                     setEmailOrPhone(e.target.value);
@@ -217,7 +217,7 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
                   <input 
                     type="password" 
                     className="input" 
-                    placeholder="Enter new password" 
+                    autoComplete="new-password" placeholder="Enter new password" 
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
                     required
@@ -230,7 +230,7 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
                   <input 
                     type="password" 
                     className="input" 
-                    placeholder="Re-enter new password" 
+                    autoComplete="new-password" placeholder="Re-enter new password" 
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     required
