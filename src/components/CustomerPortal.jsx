@@ -85,7 +85,6 @@ export const CustomerPortal = ({ mobile = false, newRequestTick = 0 }) => {
 
   // Closing the form drops any photos that were picked but not sent
   const closeNewModal = () => {
-    newPhotos.forEach(p => URL.revokeObjectURL(p.url));
     setNewPhotos([]);
     setShowNewModal(false);
   };

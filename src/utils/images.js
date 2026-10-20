@@ -37,3 +37,12 @@ export const shrinkImage = async (file, maxSide = 1600, quality = 0.82) => {
   if (!blob) throw new Error('Could not process that photo.');
   return blob;
 };
+
+// A Blob as a data: URL. Used for the preview of a photo that is picked but not sent yet.
+export const blobToDataUrl = (blob) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Could not show that photo.'));
+    reader.readAsDataURL(blob);
+  });

@@ -1,7 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera, X, ImageOff } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { MAX_PHOTOS, shrinkImage } from '../utils/images';
+import { MAX_PHOTOS, shrinkImage, blobToDataUrl } from '../utils/images';
+
+// Full-screen view of one photo; tap anywhere (or the X) to close
+const Lightbox = ({ src, onClose }) => (
+  <div className="photo-lightbox" onClick={onClose} role="dialog" aria-label="Photo">
+    <button type="button" className="photo-lightbox-close" onClick={onClose} aria-label="Close photo">
+      <X size={22} />
+    </button>
+    <img src={src} alt="Full size" onClick={(e) => e.stopPropagation()} />
+  </div>
+);
 
 /*
  * Photos on a service request.
@@ -13,6 +23,7 @@ export const PhotoPicker = ({ photos, onChange }) => {
   const inputRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [viewing, setViewing] = useState(null); // index of the picked photo shown full screen
 
   const handleFiles = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -27,7 +38,8 @@ export const PhotoPicker = ({ photos, onChange }) => {
     for (const file of files.slice(0, room)) {
       try {
         const blob = await shrinkImage(file);
-        added.push({ blob, url: URL.createObjectURL(blob) });
+        // data: URL (not blob:) so the preview shows on every page setup
+        added.push({ blob, url: await blobToDataUrl(blob) });
       } catch (err) {
         setError(err.message || 'Could not read that photo.');
       }
@@ -37,7 +49,7 @@ export const PhotoPicker = ({ photos, onChange }) => {
   };
 
   const remove = (index) => {
-    URL.revokeObjectURL(photos[index].url);
+    setViewing(null);
     onChange(photos.filter((_, i) => i !== index));
   };
 
@@ -51,7 +63,9 @@ export const PhotoPicker = ({ photos, onChange }) => {
       <div className="photo-grid">
         {photos.map((p, i) => (
           <div key={p.url} className="photo-thumb">
-            <img src={p.url} alt={`Attached photo ${i + 1}`} />
+            <button type="button" className="photo-open" onClick={() => setViewing(i)} aria-label={`View photo ${i + 1}`}>
+              <img src={p.url} alt={`Attached photo ${i + 1}`} />
+            </button>
             <button type="button" className="photo-remove" onClick={() => remove(i)} aria-label={`Remove photo ${i + 1}`}>
               <X size={14} />
             </button>
@@ -66,7 +80,9 @@ export const PhotoPicker = ({ photos, onChange }) => {
       </div>
 
       <input ref={inputRef} type="file" accept="image/*" multiple onChange={handleFiles} style={{ display: 'none' }} />
+      {photos.length > 0 && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '6px' }}>Tap a photo to view it.</div>}
       {error && <div style={{ color: '#fca5a5', fontSize: '0.8rem', marginTop: '6px' }}>{error}</div>}
+      {viewing !== null && photos[viewing] && <Lightbox src={photos[viewing].url} onClose={() => setViewing(null)} />}
     </div>
   );
 };
@@ -112,14 +128,7 @@ export const RequestPhotos = ({ request }) => {
         ))}
       </div>
 
-      {open && urls[open] && (
-        <div className="photo-lightbox" onClick={() => setOpen(null)} role="dialog" aria-label="Photo">
-          <button type="button" className="photo-lightbox-close" onClick={() => setOpen(null)} aria-label="Close photo">
-            <X size={22} />
-          </button>
-          <img src={urls[open]} alt="Full size" onClick={(e) => e.stopPropagation()} />
-        </div>
-      )}
+      {open && urls[open] && <Lightbox src={urls[open]} onClose={() => setOpen(null)} />}
     </>
   );
 };
