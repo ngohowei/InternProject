@@ -823,7 +823,9 @@ h1, h2, h3, h4, h5, h6 {
 
   /* Dialogs */
   .modal-overlay { padding: 0.5rem; align-items: flex-end; }
-  .modal-content { max-width: 100% !important; max-height: 94vh; }
+  /* iPhone Safari: "100vh" is taller than what you can see while the address bar is showing, which can push a
+     dialog's buttons off-screen. dvh follows the visible height; browsers without it keep the vh line. */
+  .modal-content { max-width: 100% !important; max-height: 94vh; max-height: 94dvh; }
   .modal-header, .modal-body, .modal-footer { padding-left: 1rem; padding-right: 1rem; }
   .modal-footer { flex-wrap: wrap; }
   .modal-footer .btn { flex: 1 1 auto; justify-content: center; }
