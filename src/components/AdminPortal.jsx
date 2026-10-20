@@ -23,11 +23,13 @@ import {
   Phone,
   Building,
   Download,
+  Camera,
   Power,
   PowerOff
 } from 'lucide-react';
 import { InvoiceModal } from './InvoiceModal';
 import { PartsCatalog } from './PartsCatalog';
+import { RequestPhotos } from './RequestPhotos';
 
 // mobile: drawn for the phone layout. The bottom tab bar picks one screen (prop `tab`):
 // 'overview' | 'tickets' | 'catalog' | 'people'. Everything else works exactly as on a computer.
@@ -51,6 +53,7 @@ export const AdminPortal = ({ mobile = false, tab = 'overview' }) => {
   const [engineerFilter, setEngineerFilter] = useState('ALL');
   const [selectedInvoiceReq, setSelectedInvoiceReq] = useState(null);
   const [selectedLogReq, setSelectedLogReq] = useState(null);
+  const [photoReq, setPhotoReq] = useState(null);
   const [modalRemarkInput, setModalRemarkInput] = useState('');
   const [showCreateCustModal, setShowCreateCustModal] = useState(false);
   const [accountTypeTab, setAccountTypeTab] = useState('customer'); // 'customer' | 'engineer'
@@ -500,6 +503,11 @@ export const AdminPortal = ({ mobile = false, tab = 'overview' }) => {
                         <MessageSquare size={14} /> {req.workLog.length} logs
                       </button>
                     )}
+                    {(req.photos || []).length > 0 && (
+                      <button className="btn btn-secondary btn-sm" onClick={() => setPhotoReq(req)}>
+                        <Camera size={14} /> {req.photos.length} photo{req.photos.length > 1 ? 's' : ''}
+                      </button>
+                    )}
                     <button className="btn btn-secondary btn-sm" onClick={() => setSelectedInvoiceReq(req)}>
                       <FileText size={14} /> Invoice
                     </button>
@@ -618,6 +626,15 @@ export const AdminPortal = ({ mobile = false, tab = 'overview' }) => {
 
                   <td>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {(req.photos || []).length > 0 && (
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => setPhotoReq(req)}
+                          title="View the photos the customer attached"
+                        >
+                          <Camera size={14} /> {req.photos.length}
+                        </button>
+                      )}
                       <button
                         className="btn btn-secondary btn-sm"
                         onClick={() => setSelectedInvoiceReq(req)}
@@ -832,6 +849,22 @@ export const AdminPortal = ({ mobile = false, tab = 'overview' }) => {
         </div>
         )}
       </div>
+      )}
+
+      {/* Customer photos for one ticket */}
+      {photoReq && (
+        <div className="modal-overlay" onClick={() => setPhotoReq(null)}>
+          <div className="modal-content" style={{ maxWidth: '480px' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Photos - {photoReq.id}</h3>
+              <button className="close-btn" onClick={() => setPhotoReq(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '12px' }}>{photoReq.title}</p>
+              <RequestPhotos request={photoReq} />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Create Account Modal (Customer or Staff Engineer) */}

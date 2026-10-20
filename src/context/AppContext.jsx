@@ -216,16 +216,44 @@ export const AppProvider = ({ children }) => {
     return { success: false, error: data?.error };
   };
 
-  const createServiceRequest = async (formData) => {
+  // photos: optional list of JPEG Blobs (already shrunk). The request is created first, then each photo is sent.
+  const createServiceRequest = async (formData, photos = []) => {
     const data = await apiFetch('/requests', { method: 'POST', body: JSON.stringify(formData) });
     if (data?.success) {
-      showNotification(`Service request ${data.request.id} submitted`);
+      let failed = 0;
+      for (const blob of photos) {
+        const up = await apiFetch(`/requests/${data.request.id}/photos`, {
+          method: 'POST',
+          headers: { 'Content-Type': blob.type || 'image/jpeg' },
+          body: blob
+        });
+        if (!up?.success) failed += 1;
+      }
+      if (failed > 0) {
+        showNotification(`Request ${data.request.id} was sent, but ${failed} photo${failed > 1 ? 's' : ''} could not be uploaded.`, 'error');
+      } else {
+        showNotification(`Service request ${data.request.id} submitted`);
+      }
       await refreshData();
       return data.request.id;
     }
     showNotification(data?.error || 'Failed to submit service request', 'error');
     return null;
   };
+
+  // Photos need the login to be viewed, so they are downloaded with it and shown from a local blob URL.
+  const fetchRequestPhoto = useCallback(async (requestId, photoId) => {
+    const token = getToken();
+    try {
+      const res = await fetch(`${API_BASE}/requests/${requestId}/photos/${photoId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (!res.ok) return null;
+      return URL.createObjectURL(await res.blob());
+    } catch {
+      return null;
+    }
+  }, []);
 
   const assignEngineerToRequest = async (requestId, engineerId) => {
     const data = await apiFetch(`/requests/${requestId}/assign`, {
@@ -408,6 +436,7 @@ export const AppProvider = ({ children }) => {
       sendOtpCode,
       verifyOtpCode,
       createServiceRequest,
+      fetchRequestPhoto,
       assignEngineerToRequest,
       updateJobStatus,
       saveEngineerFieldReport,

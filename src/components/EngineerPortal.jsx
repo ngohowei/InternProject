@@ -17,6 +17,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { InvoiceModal } from './InvoiceModal';
+import { RequestPhotos } from './RequestPhotos';
 import { PART_CATEGORIES } from '../data/partCategories';
 
 // mobile: drawn for the phone layout, where the bottom tab bar picks 'active' or 'history' (prop `tab`).
@@ -352,6 +353,12 @@ export const EngineerPortal = ({ mobile = false, tab = 'active' }) => {
             <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
               <span className="text-muted" style={{ fontWeight: 600 }}>Problem Statement:</span>
               <p style={{ color: 'var(--text-main)', marginTop: '2px' }}>{job.description}</p>
+              {(job.photos || []).length > 0 && (
+                <div style={{ marginTop: '8px' }}>
+                  <span className="text-muted" style={{ fontWeight: 600, fontSize: '0.8rem', display: 'block', marginBottom: '6px' }}>Customer photos:</span>
+                  <RequestPhotos request={job} />
+                </div>
+              )}
             </div>
 
             {/* Existing Work Log & Remarks */}
