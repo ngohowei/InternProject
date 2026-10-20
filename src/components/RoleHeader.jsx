@@ -9,9 +9,11 @@ import {
   LogOut,
   KeyRound,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Smartphone
 } from 'lucide-react';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { useLayoutMode, setLayoutOverride } from '../hooks/useLayoutMode';
 
 const ROLE_META = {
   customer: { icon: User, label: 'Customer Portal' },
@@ -32,6 +34,8 @@ export const RoleHeader = () => {
   } = useApp();
 
   const [showPassModal, setShowPassModal] = useState(false);
+  // a phone that was switched to the computer layout gets a way back
+  const { deviceIsPhone, override } = useLayoutMode();
 
   // Reset Demo erases EVERYTHING, so it needs the user to type RESET first.
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -107,6 +111,12 @@ export const RoleHeader = () => {
             >
               <KeyRound size={14} /> Password
             </button>
+
+            {deviceIsPhone && override === 'desktop' && (
+              <button className="btn btn-secondary btn-sm" onClick={() => setLayoutOverride(null)} title="Go back to the phone layout">
+                <Smartphone size={14} /> Phone layout
+              </button>
+            )}
 
             <button className="btn btn-secondary btn-sm" onClick={logout} title="Log out">
               <LogOut size={14} /> Log Out

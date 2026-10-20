@@ -770,7 +770,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .part-code-inline { display: none; }
 
-@media (max-width: 720px) {
+@media (max-width: 720px), (pointer: coarse) and (max-height: 500px) {
   .main-content { padding: 1rem 0.75rem; }
   /* On desktop the header stays pinned. Stacked on a phone it would cover over half of the screen while
      scrolling, so there it scrolls away with the page. */
@@ -823,7 +823,9 @@ h1, h2, h3, h4, h5, h6 {
 
   /* Dialogs */
   .modal-overlay { padding: 0.5rem; align-items: flex-end; }
-  .modal-content { max-width: 100% !important; max-height: 94vh; }
+  /* iPhone Safari: "100vh" is taller than what you can see while the address bar is showing, which can push a
+     dialog's buttons off-screen. dvh follows the visible height; browsers without it keep the vh line. */
+  .modal-content { max-width: 100% !important; max-height: 94vh; max-height: 94dvh; }
   .modal-header, .modal-body, .modal-footer { padding-left: 1rem; padding-right: 1rem; }
   .modal-footer { flex-wrap: wrap; }
   .modal-footer .btn { flex: 1 1 auto; justify-content: center; }
@@ -861,3 +863,129 @@ h1, h2, h3, h4, h5, h6 {
   .invoice-table th, .invoice-table td { padding: 0.5rem 0.4rem; font-size: 0.78rem; }
   .invoice-summary { width: 100%; }
 }
+
+/* =========================================================================
+   PHONE LAYOUT  (the shell chosen by src/hooks/useLayoutMode.js)
+   Everything below is scoped to .m-app, so the computer layout is untouched.
+   ========================================================================= */
+.m-app {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  -webkit-tap-highlight-color: transparent;
+}
+.m-app, .m-app * { touch-action: manipulation; } /* no double-tap zoom delay */
+
+/* Slim top bar */
+.m-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 52px;
+  padding: calc(env(safe-area-inset-top) + 8px) calc(14px + env(safe-area-inset-right)) 8px calc(14px + env(safe-area-inset-left));
+  background: rgba(11, 15, 25, 0.92);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+}
+.m-topbar-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.m-logo {
+  width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; color: #fff;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-cyan));
+}
+.m-topbar-title {
+  font-family: var(--font-heading); font-weight: 800; font-size: 1.15rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.m-role-chip {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+  color: var(--accent-cyan); background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.35);
+  padding: 3px 9px; border-radius: 999px;
+}
+
+/* The screen */
+.m-main {
+  flex: 1;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 14px calc(12px + env(safe-area-inset-right)) calc(92px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
+}
+.m-app .card { padding: 14px; border-radius: 16px; margin-bottom: 14px; }
+.m-app .btn { min-height: 44px; }
+.m-app .btn-sm { min-height: 40px; }
+
+/* Bottom tab bar (clear of the iPhone home indicator) */
+.m-tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 120;
+  display: flex;
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: rgba(17, 24, 39, 0.96);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--border-color);
+}
+.m-tab {
+  flex: 1; min-width: 0; min-height: 58px; padding: 8px 2px 7px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-family: var(--font-body); font-size: 0.68rem; font-weight: 600;
+}
+.m-tab.selected { color: var(--accent-cyan); }
+.m-tab-icon { position: relative; display: flex; align-items: center; justify-content: center; }
+.m-tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-tab.primary { color: var(--text-main); }
+.m-tab.primary .m-tab-icon {
+  width: 46px; height: 46px; margin-top: -16px; border-radius: 50%; color: #fff;
+  background: linear-gradient(135deg, var(--accent-primary), #2563eb);
+  border: 3px solid var(--bg-primary);
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.45);
+}
+.m-tab-badge {
+  position: absolute; top: -6px; right: -12px; min-width: 17px; height: 17px; padding: 0 4px;
+  display: flex; align-items: center; justify-content: center; border-radius: 999px;
+  background: var(--accent-rose); color: #fff; font-size: 0.62rem; font-weight: 800;
+}
+
+/* Messages ("Request sent", errors) float above the tab bar */
+.m-toast {
+  position: fixed; left: 12px; right: 12px; z-index: 150;
+  bottom: calc(74px + env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: 8px; padding: 11px 14px; border-radius: 12px;
+  background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #6ee7b7; font-size: 0.85rem;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  animation: fadeIn 0.2s ease;
+}
+.m-toast.error { background: rgba(239, 68, 68, 0.22); border-color: #ef4444; color: #fca5a5; }
+
+/* Dialogs become sheets that slide up from the bottom, with their buttons always in reach */
+.m-app .modal-overlay { align-items: flex-end; padding: 0; }
+.m-app .modal-content {
+  max-width: 100% !important; width: 100%;
+  border-radius: 20px 20px 0 0;
+  max-height: 92vh; max-height: 92dvh;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.m-app .modal-footer { position: sticky; bottom: 0; background: var(--bg-card); z-index: 2; }
+.m-sheet-handle { width: 40px; height: 4px; border-radius: 4px; background: #475569; margin: 10px auto 6px; }
+.m-account-head { display: flex; gap: 14px; align-items: center; padding: 10px 18px 16px; }
+.m-avatar {
+  width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 1.1rem;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-cyan));
+}
+.m-account-name { font-weight: 800; font-size: 1.05rem; }
+.m-account-sub { color: var(--text-muted); font-size: 0.82rem; overflow-wrap: anywhere; }
+.m-sheet-btn {
+  display: flex; align-items: center; gap: 14px; width: 100%; min-height: 56px; padding: 16px 20px;
+  background: none; border: none; border-top: 1px solid var(--border-color); cursor: pointer;
+  color: var(--text-main); font-family: var(--font-body); font-size: 1rem; font-weight: 600; text-align: left;
+}
+.m-sheet-btn.danger { color: #f87171; }
