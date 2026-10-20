@@ -772,7 +772,9 @@ h1, h2, h3, h4, h5, h6 {
 
 @media (max-width: 720px) {
   .main-content { padding: 1rem 0.75rem; }
-  .top-header { padding: 0.6rem 0.75rem; }
+  /* On desktop the header stays pinned. Stacked on a phone it would cover over half of the screen while
+     scrolling, so there it scrolls away with the page. */
+  .top-header { padding: 0.6rem 0.75rem; position: static; }
   .role-notice-banner { padding: 0.5rem 0.75rem; }
   .card { padding: 1rem; }
   .logo-text span { display: none; }
@@ -833,6 +835,10 @@ h1, h2, h3, h4, h5, h6 {
      can wrap inside it instead of stretching the page */
   .card-header > * { max-width: 100%; min-width: 0; }
   .card-header > div { width: 100%; }
+
+  /* iPhones zoom the whole page in when you tap a text box whose text is smaller than 16px, and often
+     leave it zoomed. 16px text in fields on phones stops that. */
+  .input, .select, .textarea, input, select, textarea { font-size: 16px; }
 
   /* Easier to tap */
   .btn, .select, .input, .textarea { min-height: 40px; }
