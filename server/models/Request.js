@@ -63,7 +63,8 @@ const requestSchema = new mongoose.Schema({
   workLog: [workLogSchema],
   fieldReport: { type: fieldReportSchema, default: () => ({}) },
   billing: { type: billingSchema, default: () => ({}) },
-  rating: { type: ratingSchema, default: null }
+  rating: { type: ratingSchema, default: null },
+  photos: { type: [{ photoId: { type: String, required: true }, addedAt: { type: String, default: '' } }], default: [] } // customer photos (stored in the Photo collection)
 }, {
   timestamps: true
 });

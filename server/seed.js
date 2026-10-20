@@ -2,6 +2,7 @@ import { Account, hashPasswordValue } from './models/Account.js';
 import { Engineer } from './models/Engineer.js';
 import { Request } from './models/Request.js';
 import { Part } from './models/Part.js';
+import { Photo } from './models/Photo.js';
 import Counter, { ensureSeqAtLeast } from './models/Counter.js';
 import { isDemoMode } from './config/demo.js';
 import { ENGINEERS, INITIAL_ACCOUNTS, INITIAL_REQUESTS, INITIAL_PARTS } from '../src/data/initialData.js';
@@ -101,6 +102,7 @@ export const resetDatabase = async () => {
     Engineer.deleteMany({}),
     Request.deleteMany({}),
     Part.deleteMany({}),
+    Photo.deleteMany({}),
     Counter.deleteMany({})
   ]);
   await seedDatabase();

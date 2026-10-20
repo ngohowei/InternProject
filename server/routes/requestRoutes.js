@@ -3,6 +3,7 @@ import { Request, TAX_RATE } from '../models/Request.js';
 import { Engineer } from '../models/Engineer.js';
 import { Account } from '../models/Account.js';
 import { Part } from '../models/Part.js';
+import { Photo } from '../models/Photo.js';
 import { nextSeq } from '../models/Counter.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
@@ -197,6 +198,77 @@ router.post('/', requireRole('customer', 'admin'), async (req, res) => {
   } catch (err) {
     console.error('Create request error:', err);
     fail(res, 500, 'Server error');
+  }
+});
+
+/*
+ * Photos on a request. The customer attaches up to MAX_PHOTOS pictures (optional) while or after
+ * submitting; the browser shrinks each one first. Only the ticket's owner, its assigned engineer
+ * and admins can look at them, and the file type is decided here from the file's own first bytes,
+ * never from what the browser claims.
+ */
+const MAX_PHOTOS = 3;
+const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
+const sniffImageType = (b) => {
+  if (b.length > 12 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
+  if (b.length > 12 && b[0] === 0x89 && b.toString('latin1', 1, 4) === 'PNG') return 'image/png';
+  if (b.length > 12 && b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') return 'image/webp';
+  return null;
+};
+const canSee = (user, r) =>
+  user.role === 'admin' ||
+  (user.role === 'customer' && r.email === user.email) ||
+  (user.role === 'engineer' && r.assignedEngineerId === user.engineerId);
+
+// POST /api/requests/:id/photos - body is the raw image file
+router.post(
+  '/:id/photos',
+  requireRole('customer', 'admin'),
+  express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: MAX_PHOTO_BYTES }),
+  async (req, res) => {
+    try {
+      const request = await Request.findOne({ id: req.params.id });
+      if (!request || !canSee(req.user, request)) return fail(res, 404, 'Request not found');
+      if (isInvoiced(request)) return fail(res, 409, LOCKED);
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) return fail(res, 400, 'No photo received');
+      const contentType = sniffImageType(req.body);
+      if (!contentType) return fail(res, 400, 'That file is not a photo (use JPG, PNG or WebP)');
+      if (request.photos.length >= MAX_PHOTOS) return fail(res, 400, `A request can have at most ${MAX_PHOTOS} photos`);
+
+      const photo = await Photo.create({
+        requestId: request.id,
+        data: req.body,
+        contentType,
+        size: req.body.length,
+        uploadedBy: req.user.email
+      });
+      request.photos.push({ photoId: String(photo._id), addedAt: now() });
+      await request.save();
+      res.status(201).json({ success: true, request });
+    } catch (err) {
+      console.error('Photo upload error:', err);
+      fail(res, 500, 'Server error');
+    }
+  }
+);
+
+// GET /api/requests/:id/photos/:photoId - the picture itself
+router.get('/:id/photos/:photoId', async (req, res) => {
+  try {
+    const request = await Request.findOne({ id: req.params.id });
+    if (!request || !canSee(req.user, request)) return fail(res, 404, 'Photo not found');
+    if (!request.photos.some((p) => p.photoId === req.params.photoId)) return fail(res, 404, 'Photo not found');
+    const photo = await Photo.findById(req.params.photoId);
+    if (!photo) return fail(res, 404, 'Photo not found');
+    res.set({
+      'Content-Type': photo.contentType,
+      'Content-Length': String(photo.data.length),
+      'Cache-Control': 'private, max-age=3600',
+      'Content-Disposition': 'inline'
+    });
+    res.send(photo.data);
+  } catch (err) {
+    fail(res, 404, 'Photo not found');
   }
 });
 

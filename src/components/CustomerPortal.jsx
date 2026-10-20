@@ -17,6 +17,7 @@ import {
   Star
 } from 'lucide-react';
 import { InvoiceModal } from './InvoiceModal';
+import { PhotoPicker, RequestPhotos } from './RequestPhotos';
 
 // mobile: drawn for the phone layout (no banner, roomier touch targets). newRequestTick: the phone's "New" tab
 // bumps this number to open the request form.
@@ -26,6 +27,7 @@ export const CustomerPortal = ({ mobile = false, newRequestTick = 0 }) => {
   const [selectedInvoiceReq, setSelectedInvoiceReq] = useState(null);
   const [ratingModalReq, setRatingModalReq] = useState(null);
   const [remarkInput, setRemarkInput] = useState({});
+  const [newPhotos, setNewPhotos] = useState([]); // optional pictures for the request being written: [{ blob, url }]
 
   const lastTick = useRef(newRequestTick);
   useEffect(() => {
@@ -74,11 +76,17 @@ export const CustomerPortal = ({ mobile = false, newRequestTick = 0 }) => {
       alert('Please fill out request title and problem description.');
       return;
     }
-    const reqId = await createServiceRequest(formData);
+    const reqId = await createServiceRequest(formData, newPhotos.map(p => p.blob));
     if (reqId) {
-      setShowNewModal(false);
+      closeNewModal();
       setFormData(prev => ({ ...prev, title: '', description: '' }));
     }
+  };
+
+  // Closing the form drops any photos that were picked but not sent
+  const closeNewModal = () => {
+    setNewPhotos([]);
+    setShowNewModal(false);
   };
 
   const handleAddRemark = async (reqId) => {
@@ -272,6 +280,9 @@ export const CustomerPortal = ({ mobile = false, newRequestTick = 0 }) => {
               {/* Problem Description */}
               <div style={{ marginTop: '1rem', padding: '10px 14px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px', fontSize: '0.875rem' }}>
                 <strong>Issue Description:</strong> {req.description}
+                {(req.photos || []).length > 0 && (
+                  <div style={{ marginTop: '10px' }}><RequestPhotos request={req} /></div>
+                )}
               </div>
 
               {/* Progress Tracker Stepper */}
@@ -384,11 +395,11 @@ export const CustomerPortal = ({ mobile = false, newRequestTick = 0 }) => {
 
       {/* New Service Request Modal */}
       {showNewModal && (
-        <div className="modal-overlay" onClick={() => setShowNewModal(false)}>
+        <div className="modal-overlay" onClick={closeNewModal}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Submit On-Site Service Request</h3>
-              <button className="close-btn" onClick={() => setShowNewModal(false)}>✕</button>
+              <button className="close-btn" onClick={closeNewModal}>✕</button>
             </div>
 
             <form onSubmit={handleSubmit}>
@@ -481,10 +492,12 @@ export const CustomerPortal = ({ mobile = false, newRequestTick = 0 }) => {
                     required
                   />
                 </div>
+
+                <PhotoPicker photos={newPhotos} onChange={setNewPhotos} />
               </div>
 
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowNewModal(false)}>
+                <button type="button" className="btn btn-secondary" onClick={closeNewModal}>
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary">
