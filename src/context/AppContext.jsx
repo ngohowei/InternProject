@@ -120,6 +120,21 @@ export const AppProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Keep the screen fresh without a manual reload: every 30 s while the page is showing, and straight
+  // away when the person comes back to the app (phones put it in the background all the time).
+  useEffect(() => {
+    if (!currentUser) return undefined;
+    const tick = () => { if (document.visibilityState === 'visible') refreshData(); };
+    const timer = setInterval(tick, 30000);
+    document.addEventListener('visibilitychange', tick);
+    window.addEventListener('online', tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', tick);
+      window.removeEventListener('online', tick);
+    };
+  }, [currentUser, refreshData]);
+
   // Ask the server which demo-only features to show. If it can't be reached, stay on the safe side (off).
   useEffect(() => {
     fetch(`${API_BASE}/config`)

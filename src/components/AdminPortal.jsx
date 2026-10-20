@@ -351,7 +351,7 @@ export const AdminPortal = ({ mobile = false, tab = 'overview' }) => {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <strong style={{ fontSize: '0.95rem' }}>{eng.name}</strong>
-                    <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.08)', fontSize: '0.7rem' }}>
+                    <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.08)', fontSize: '0.75rem' }}>
                       {eng.id}
                     </span>
                   </div>
@@ -730,7 +730,7 @@ export const AdminPortal = ({ mobile = false, tab = 'overview' }) => {
                   <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>{acc.name}</div>
                   <div style={{ fontSize: '0.8rem', color: '#94a3b8', overflowWrap: 'anywhere' }}>{acc.email}</div>
                   <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{acc.phone}</div>
-                  <div className="font-mono text-cyan" style={{ fontSize: '0.72rem', marginTop: '4px' }}>
+                  <div className="font-mono text-cyan" style={{ fontSize: '0.78rem', marginTop: '4px' }}>
                     {acc.id}{acc.createdAt ? ` · ${new Date(acc.createdAt).toLocaleDateString()}` : ''}
                   </div>
                 </div>
@@ -746,7 +746,7 @@ export const AdminPortal = ({ mobile = false, tab = 'overview' }) => {
                   <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>{eng.specialty}</div>
                   <div style={{ fontSize: '0.8rem', color: '#94a3b8', overflowWrap: 'anywhere' }}>{eng.email}</div>
                   <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{eng.phone}</div>
-                  <div className="font-mono text-amber" style={{ fontSize: '0.72rem', marginTop: '4px' }}>{eng.id}</div>
+                  <div className="font-mono text-amber" style={{ fontSize: '0.78rem', marginTop: '4px' }}>{eng.id}</div>
                   <button
                     className={`btn btn-sm ${eng.isActive === false ? 'btn-primary' : 'btn-secondary'}`}
                     style={{
