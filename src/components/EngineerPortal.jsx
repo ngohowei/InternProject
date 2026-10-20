@@ -19,7 +19,8 @@ import {
 import { InvoiceModal } from './InvoiceModal';
 import { PART_CATEGORIES } from '../data/partCategories';
 
-export const EngineerPortal = () => {
+// mobile: drawn for the phone layout, where the bottom tab bar picks 'active' or 'history' (prop `tab`).
+export const EngineerPortal = ({ mobile = false, tab = 'active' }) => {
   const { 
     requests, 
     engineers, 
@@ -31,7 +32,8 @@ export const EngineerPortal = () => {
     fetchParts
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState('active'); // 'active' | 'completed'
+  const [activeTabState, setActiveTab] = useState('active'); // 'active' | 'completed'
+  const activeTab = mobile ? (tab === 'history' ? 'completed' : 'active') : activeTabState;
   const [editingJob, setEditingJob] = useState(null);
   const [selectedInvoiceReq, setSelectedInvoiceReq] = useState(null);
   const [remarkText, setRemarkText] = useState({});
@@ -185,6 +187,7 @@ export const EngineerPortal = () => {
   return (
     <div className="engineer-portal">
       {/* Top Banner */}
+      {!mobile && (
       <div className="portal-banner" style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -228,21 +231,26 @@ export const EngineerPortal = () => {
           </div>
         </div>
       </div>
+      )}
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '1.5rem' }}>
-        <button 
-          className={`btn ${activeTab === 'active' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('active')}
-        >
-          Active Dispatches ({activeJobs.length})
-        </button>
-        <button 
-          className={`btn ${activeTab === 'completed' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('completed')}
-        >
-          Completed History ({completedJobs.length})
-        </button>
+      {/* Tabs (on a phone the bottom tab bar does this) */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: mobile ? '0.75rem' : '1.5rem' }}>
+        {!mobile && (
+          <>
+            <button
+              className={`btn ${activeTab === 'active' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setActiveTab('active')}
+            >
+              Active Dispatches ({activeJobs.length})
+            </button>
+            <button
+              className={`btn ${activeTab === 'completed' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setActiveTab('completed')}
+            >
+              Completed History ({completedJobs.length})
+            </button>
+          </>
+        )}
 
         {activeTab === 'completed' && completedJobs.length > 0 && (
           <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
@@ -263,7 +271,7 @@ export const EngineerPortal = () => {
       </div>
 
       {/* Job Cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: mobile ? '0.9rem' : '1.5rem' }}>
         {(activeTab === 'active' ? activeJobs : completedJobs).map(job => (
           <div 
             key={job.id}
@@ -291,7 +299,7 @@ export const EngineerPortal = () => {
               </div>
 
               {/* Status Action Buttons */}
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', ...(mobile ? { width: '100%', flexDirection: 'column' } : {}) }}>
                 {job.status === 'Assigned' && (
                   <button 
                     className="btn btn-warning btn-sm"
@@ -324,11 +332,11 @@ export const EngineerPortal = () => {
             {isCardExpanded(job) && (
             <>
             {/* Customer & Location */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', backgroundColor: 'var(--bg-input)', padding: '12px 16px', borderRadius: '8px', marginBottom: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: '1rem', backgroundColor: 'var(--bg-input)', padding: '12px 16px', borderRadius: '8px', marginBottom: '1rem' }}>
               <div>
                 <span className="text-muted" style={{ fontSize: '0.8rem', display: 'block' }}>CUSTOMER FACILITY</span>
                 <strong style={{ fontSize: '0.95rem' }}>{job.customerName}</strong>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Contact: {job.contactPerson} ({job.phone})</p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Contact: {job.contactPerson} ({mobile && job.phone ? <a href={`tel:${String(job.phone).replace(/[^+\d]/g, '')}`} style={{ color: 'var(--accent-cyan)' }}>{job.phone}</a> : job.phone})</p>
               </div>
 
               <div>
@@ -408,7 +416,7 @@ export const EngineerPortal = () => {
         {(activeTab === 'active' ? activeJobs : completedJobs).length === 0 && (
           <div className="card" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
             <HardHat size={48} className="text-muted" style={{ marginBottom: '1rem' }} />
-            <h3>No {activeTab} dispatches for {activeEngineer.name}</h3>
+            <h3>{activeTab === 'active' ? 'No active jobs' : 'No completed jobs yet'}{mobile ? '' : ` for ${activeEngineer.name}`}</h3>
             <p className="text-muted">You are all caught up on field requests.</p>
           </div>
         )}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   Plus,
@@ -18,12 +18,22 @@ import {
 } from 'lucide-react';
 import { InvoiceModal } from './InvoiceModal';
 
-export const CustomerPortal = () => {
+// mobile: drawn for the phone layout (no banner, roomier touch targets). newRequestTick: the phone's "New" tab
+// bumps this number to open the request form.
+export const CustomerPortal = ({ mobile = false, newRequestTick = 0 }) => {
   const { requests, currentUser, createServiceRequest, addRemark, submitCustomerRating } = useApp();
   const [showNewModal, setShowNewModal] = useState(false);
   const [selectedInvoiceReq, setSelectedInvoiceReq] = useState(null);
   const [ratingModalReq, setRatingModalReq] = useState(null);
   const [remarkInput, setRemarkInput] = useState({});
+
+  const lastTick = useRef(newRequestTick);
+  useEffect(() => {
+    if (newRequestTick !== lastTick.current) {
+      lastTick.current = newRequestTick;
+      setShowNewModal(true);
+    }
+  }, [newRequestTick]);
 
   // Which dispatch cards are expanded (collapsed by default so long service
   // histories stay easy to scan)
@@ -124,6 +134,7 @@ export const CustomerPortal = () => {
   return (
     <div className="customer-portal">
       {/* Top Welcome Banner & CTA */}
+      {!mobile && (
       <div className="portal-banner" style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -146,13 +157,14 @@ export const CustomerPortal = () => {
           <Plus size={18} /> Request Field Engineer
         </button>
       </div>
+      )}
 
       {/* Customer Active Tickets Feed */}
       <div className="card">
         <div className="card-header" style={{ flexWrap: 'wrap', gap: '1rem' }}>
           <div className="card-title">
             <Clock className="text-cyan" size={20} />
-            Your Field Service Dispatches ({filteredRequests.length} of {requests.length})
+            {mobile ? `Your requests (${filteredRequests.length})` : `Your Field Service Dispatches (${filteredRequests.length} of ${requests.length})`}
           </div>
 
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -162,13 +174,13 @@ export const CustomerPortal = () => {
               placeholder="Filter by ticket ID, title..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              style={{ width: '200px' }}
+              style={{ width: mobile ? '100%' : '200px' }}
             />
             <select
               className="select"
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
-              style={{ width: 'auto' }}
+              style={{ width: mobile ? '100%' : 'auto' }}
             >
               <option value="ALL">All Statuses</option>
               <option value="Pending">Pending</option>
@@ -178,22 +190,33 @@ export const CustomerPortal = () => {
               <option value="Completed">Completed</option>
               <option value="Paid">Paid</option>
             </select>
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={() => setExpandedIds(new Set(filteredRequests.map(r => r.id)))}
-            >
-              Expand all
-            </button>
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={() => setExpandedIds(new Set())}
-            >
-              Collapse all
-            </button>
+            {!mobile && (
+              <>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setExpandedIds(new Set(filteredRequests.map(r => r.id)))}
+                >
+                  Expand all
+                </button>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setExpandedIds(new Set())}
+                >
+                  Collapse all
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {filteredRequests.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)' }}>
+            {requests.length === 0
+              ? <>No requests yet.{mobile && <> Tap <strong>New</strong> below to ask for an engineer.</>}</>
+              : 'No request matches your search.'}
+          </div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: mobile ? '0.9rem' : '1.5rem' }}>
           {filteredRequests.map(req => (
             <div
               key={req.id}
@@ -202,7 +225,7 @@ export const CustomerPortal = () => {
                 backgroundColor: 'var(--bg-input)',
                 border: '1px solid var(--border-color)',
                 borderRadius: '12px',
-                padding: '1.5rem',
+                padding: mobile ? '0.9rem' : '1.5rem',
                 transition: 'border-color 0.2s ease'
               }}
             >
@@ -235,9 +258,9 @@ export const CustomerPortal = () => {
                   </p>
                 </div>
 
-                <div style={{ textAlign: 'right' }}>
+                <div style={{ textAlign: mobile ? 'left' : 'right' }}>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Assigned Engineer</div>
-                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end', marginTop: '2px' }}>
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', justifyContent: mobile ? 'flex-start' : 'flex-end', marginTop: '2px' }}>
                     <HardHat size={16} className="text-amber" />
                     {req.assignedEngineerName}
                   </div>
@@ -298,7 +321,7 @@ export const CustomerPortal = () => {
               {/* Live Communication & Remarks Stream */}
               <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <MessageSquare size={14} /> Engineer & Admin Work Log History ({req.workLog.length})
+                  <MessageSquare size={14} /> {mobile ? 'Updates' : 'Engineer & Admin Work Log History'} ({req.workLog.length})
                 </h4>
 
                 <div className="remarks-timeline">
@@ -318,13 +341,13 @@ export const CustomerPortal = () => {
                   <input
                     type="text"
                     className="input"
-                    placeholder="Add a message or note for the engineer/admin..."
+                    placeholder={mobile ? 'Write a message…' : 'Add a message or note for the engineer/admin...'}
                     value={remarkInput[req.id] || ''}
                     onChange={(e) => setRemarkInput({ ...remarkInput, [req.id]: e.target.value })}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddRemark(req.id)}
                   />
                   <button className="btn btn-secondary" onClick={() => handleAddRemark(req.id)}>
-                    Send Message
+                    {mobile ? 'Send' : 'Send Message'}
                   </button>
                 </div>
               </div>
@@ -340,7 +363,7 @@ export const CustomerPortal = () => {
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: mobile ? '100%' : 'auto' }}>
                   {(req.status === 'Completed' || req.status === 'Billed' || req.status === 'Paid') && (
                     <button className="btn btn-warning btn-sm" onClick={() => setRatingModalReq(req)}>
                       <Star size={14} /> Rate Service
@@ -348,7 +371,7 @@ export const CustomerPortal = () => {
                   )}
 
                   <button className="btn btn-secondary btn-sm" onClick={() => setSelectedInvoiceReq(req)}>
-                    <FileText size={14} /> Inspect Invoice Breakdown (${(req.billing?.grandTotal || 0).toFixed(2)})
+                    <FileText size={14} /> {mobile ? 'Invoice' : 'Inspect Invoice Breakdown'} (${(req.billing?.grandTotal || 0).toFixed(2)})
                   </button>
                 </div>
               </div>

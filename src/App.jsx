@@ -5,6 +5,8 @@ import { LoginPage } from './components/LoginPage';
 import { CustomerPortal } from './components/CustomerPortal';
 import { EngineerPortal } from './components/EngineerPortal';
 import { AdminPortal } from './components/AdminPortal';
+import { MobileLayout } from './components/mobile/MobileLayout';
+import { useLayoutMode } from './hooks/useLayoutMode';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -87,6 +89,8 @@ class ErrorBoundary extends React.Component {
 
 const MainLayout = () => {
   const { currentUser, currentRole, authReady } = useApp();
+  // Phones get the phone layout; computers keep the original one (see hooks/useLayoutMode.js)
+  const { isMobile } = useLayoutMode();
 
   // Wait until a stored session has been checked, so we don't flash the login page on refresh.
   if (!authReady) {
@@ -100,6 +104,10 @@ const MainLayout = () => {
   // Not logged in: show the Company Login Page
   if (!currentUser) {
     return <LoginPage />;
+  }
+
+  if (isMobile) {
+    return <MobileLayout />;
   }
 
   return (

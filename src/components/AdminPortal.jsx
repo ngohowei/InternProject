@@ -29,7 +29,9 @@ import {
 import { InvoiceModal } from './InvoiceModal';
 import { PartsCatalog } from './PartsCatalog';
 
-export const AdminPortal = () => {
+// mobile: drawn for the phone layout. The bottom tab bar picks one screen (prop `tab`):
+// 'overview' | 'tickets' | 'catalog' | 'people'. Everything else works exactly as on a computer.
+export const AdminPortal = ({ mobile = false, tab = 'overview' }) => {
   const {
     requests,
     engineers,
@@ -197,9 +199,12 @@ export const AdminPortal = () => {
     showNotification('Exported Dispatches CSV Report!');
   };
 
+  const show = (name) => !mobile || tab === name;
+
   return (
     <div className="admin-portal">
       {/* Top Banner */}
+      {!mobile && (
       <div className="portal-banner" style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -241,7 +246,21 @@ export const AdminPortal = () => {
           </button>
         </div>
       </div>
+      )}
 
+      {mobile && tab === 'overview' && (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => { setAccountTypeTab('customer'); setShowCreateCustModal(true); }}>
+            <UserPlus size={16} /> New account
+          </button>
+          <button className="btn btn-secondary" style={{ flex: 1 }} onClick={handleExportCSV}>
+            <Download size={16} /> Export CSV
+          </button>
+        </div>
+      )}
+
+      {show('overview') && (
+      <>
       {/* KPI Stats Bar */}
       <div className="stats-grid">
         <div className="stat-card">
@@ -374,7 +393,11 @@ export const AdminPortal = () => {
         </div>
       </div>
 
+      </>
+      )}
+
       {/* Main Operations Desk Table */}
+      {show('tickets') && (
       <div className="card">
         <div className="card-header" style={{ flexWrap: 'wrap', gap: '1rem' }}>
           <div className="card-title">
@@ -384,7 +407,7 @@ export const AdminPortal = () => {
 
           {/* Search & Filter Bar */}
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', width: '220px' }}>
+            <div style={{ position: 'relative', width: mobile ? '100%' : '220px' }}>
               <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               <input
                 type="text"
@@ -400,7 +423,7 @@ export const AdminPortal = () => {
               className="select"
               value={engineerFilter}
               onChange={e => setEngineerFilter(e.target.value)}
-              style={{ width: 'auto' }}
+              style={{ width: mobile ? '100%' : 'auto' }}
             >
               <option value="ALL">All Engineers</option>
               <option value="UNASSIGNED">⚠️ Unassigned Tickets</option>
@@ -415,7 +438,7 @@ export const AdminPortal = () => {
               className="select"
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
-              style={{ width: 'auto' }}
+              style={{ width: mobile ? '100%' : 'auto' }}
             >
               <option value="ALL">All Statuses</option>
               <option value="UNASSIGNED">⚠️ Unassigned Only ({unassignedCount})</option>
@@ -428,7 +451,77 @@ export const AdminPortal = () => {
           </div>
         </div>
 
+        {/* Phone: one card per ticket */}
+        {mobile && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {filteredRequests.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '1.5rem 1rem', color: 'var(--text-muted)' }}>No tickets match.</div>
+            )}
+            {filteredRequests.map(req => {
+              const finished = ['Completed', 'Billed', 'Paid'].includes(req.status);
+              return (
+                <div key={req.id} style={{ backgroundColor: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                    <span className="font-mono text-cyan" style={{ fontWeight: 700, fontSize: '0.85rem' }}>{req.id}</span>
+                    <span className={`badge priority-${req.priority.toLowerCase()}`}>{req.priority}</span>
+                    <span className={`badge status-${(req.status || 'Pending').toLowerCase().replace(/ /g, '-')}`}>{req.status || 'Pending'}</span>
+                  </div>
+                  <strong style={{ display: 'block' }}>{req.customerName}</strong>
+                  <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{req.title}</div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>📍 {req.location} · {req.category} · {req.dateSubmitted}</div>
+
+                  <select
+                    className="select"
+                    value={req.assignedEngineerId || ''}
+                    disabled={finished}
+                    onChange={e => assignEngineerToRequest(req.id, e.target.value)}
+                    style={{ marginTop: '10px', borderColor: !req.assignedEngineerId ? '#f59e0b' : 'var(--border-color)' }}
+                  >
+                    <option value="" disabled>-- Assign Engineer --</option>
+                    {(engineers || [])
+                      .filter(eng => eng.isActive !== false || eng.id === req.assignedEngineerId)
+                      .map(eng => (
+                        <option key={eng.id} value={eng.id} disabled={eng.isActive === false}>
+                          {eng.name} ({eng.specialty}){eng.isActive === false ? ' - inactive' : ''}
+                        </option>
+                      ))}
+                  </select>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '10px 0 8px' }}>
+                    <span style={{ fontWeight: 700 }}>${(req.billing?.grandTotal || 0).toFixed(2)}</span>
+                    <span className={`badge ${req.billing?.billingStatus === 'Paid' ? 'status-paid' : req.billing?.billingStatus === 'Invoice Sent' ? 'status-billed' : 'status-pending'}`}>
+                      {req.billing?.billingStatus || 'Unbilled'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {(req.workLog || []).length > 0 && (
+                      <button className="btn btn-secondary btn-sm" onClick={() => setSelectedLogReq(req)}>
+                        <MessageSquare size={14} /> {req.workLog.length} logs
+                      </button>
+                    )}
+                    <button className="btn btn-secondary btn-sm" onClick={() => setSelectedInvoiceReq(req)}>
+                      <FileText size={14} /> Invoice
+                    </button>
+                    {isReadyToBill(req) && (
+                      <button className="btn btn-primary btn-sm" onClick={() => markInvoiceSent(req.id)}>
+                        <Send size={14} /> Send Bill
+                      </button>
+                    )}
+                    {req.billing?.billingStatus === 'Invoice Sent' && (
+                      <button className="btn btn-success btn-sm" onClick={() => markInvoicePaid(req.id)}>
+                        <CheckCircle2 size={14} /> Mark Paid
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* Requests Management Table */}
+        {!mobile && (
         <div className="table-responsive">
           <table className="data-table">
             <thead>
@@ -561,12 +654,15 @@ export const AdminPortal = () => {
             </tbody>
           </table>
         </div>
+        )}
       </div>
+      )}
 
       {/* Parts catalog (search, filters, paging, CSV import) */}
-      <PartsCatalog />
+      {show('catalog') && <PartsCatalog mobile={mobile} />}
 
       {/* Admin User Account Management Section */}
+      {show('people') && (
       <div className="card">
         <div className="card-header" style={{ flexWrap: 'wrap', gap: '1rem' }}>
           <div className="card-title">
@@ -579,14 +675,14 @@ export const AdminPortal = () => {
               className={`btn btn-sm ${accountsTableTab === 'customer' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setAccountsTableTab('customer')}
             >
-              <User size={14} /> Customer Accounts ({customerAccounts.length})
+              <User size={14} /> {mobile ? 'Customers' : 'Customer Accounts'} ({customerAccounts.length})
             </button>
 
             <button
               className={`btn btn-sm ${accountsTableTab === 'engineer' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setAccountsTableTab('engineer')}
             >
-              <HardHat size={14} /> Staff Engineer Accounts ({engineerAccounts.length})
+              <HardHat size={14} /> {mobile ? 'Engineers' : 'Staff Engineer Accounts'} ({engineerAccounts.length})
             </button>
 
             <button
@@ -605,6 +701,54 @@ export const AdminPortal = () => {
           🔒 User accounts can <strong>only be registered by Admin</strong>. Registered users (Customers & Staff Engineers) can log in using these credentials.
         </p>
 
+        {mobile && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {accountsTableTab === 'customer'
+              ? customerAccounts.map(acc => (
+                <div key={acc.id} style={{ backgroundColor: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center' }}>
+                    <strong>{acc.customerName}</strong>
+                    <span className="badge status-completed">Authorized</span>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>{acc.name}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#94a3b8', overflowWrap: 'anywhere' }}>{acc.email}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{acc.phone}</div>
+                  <div className="font-mono text-cyan" style={{ fontSize: '0.72rem', marginTop: '4px' }}>
+                    {acc.id}{acc.createdAt ? ` · ${new Date(acc.createdAt).toLocaleDateString()}` : ''}
+                  </div>
+                </div>
+              ))
+              : engineers.map(eng => (
+                <div key={eng.id} style={{ backgroundColor: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '12px', opacity: eng.isActive === false ? 0.6 : 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center' }}>
+                    <strong>{eng.name}</strong>
+                    {eng.isActive === false
+                      ? <span className="badge status-pending" style={{ color: '#ef4444', borderColor: '#ef4444' }}>Inactive</span>
+                      : <span className="badge status-completed">Active Staff</span>}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>{eng.specialty}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#94a3b8', overflowWrap: 'anywhere' }}>{eng.email}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{eng.phone}</div>
+                  <div className="font-mono text-amber" style={{ fontSize: '0.72rem', marginTop: '4px' }}>{eng.id}</div>
+                  <button
+                    className={`btn btn-sm ${eng.isActive === false ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{
+                      width: '100%', marginTop: '8px',
+                      borderColor: eng.isActive === false ? '#22c55e' : '#ef4444',
+                      color: eng.isActive === false ? '#22c55e' : '#ef4444',
+                      backgroundColor: eng.isActive === false ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'
+                    }}
+                    onClick={() => toggleEngineerActive(eng.id)}
+                  >
+                    {eng.isActive === false ? <Power size={12} /> : <PowerOff size={12} />}
+                    {eng.isActive === false ? ' Activate' : ' Deactivate'}
+                  </button>
+                </div>
+              ))}
+          </div>
+        )}
+
+        {!mobile && (
         <div className="table-responsive">
           {accountsTableTab === 'customer' ? (
             <table className="data-table">
@@ -686,7 +830,9 @@ export const AdminPortal = () => {
             </table>
           )}
         </div>
+        )}
       </div>
+      )}
 
       {/* Create Account Modal (Customer or Staff Engineer) */}
       {showCreateCustModal && (

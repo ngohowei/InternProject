@@ -116,7 +116,8 @@ const downloadTemplate = () => {
 
 const emptyForm = { id: null, code: '', name: '', category: 'General', unitPrice: '' };
 
-export const PartsCatalog = () => {
+// mobile: phone layout (item cards instead of a wide table)
+export const PartsCatalog = ({ mobile = false }) => {
   const { fetchParts, savePart, deletePart, importParts, showNotification } = useApp();
 
   // What the admin is looking at: filters, sort order and page. The server does the filtering,
@@ -265,7 +266,7 @@ export const PartsCatalog = () => {
 
   const from = list.total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, list.total);
-  const selectStyle = { width: 'auto' };
+  const selectStyle = { width: mobile ? '100%' : 'auto' };
 
   return (
     <>
@@ -307,12 +308,12 @@ export const PartsCatalog = () => {
 
         <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>
           Engineers choose items from this list by name or code and only enter a quantity — the price comes from here.
-          Changing a price affects <strong>future work only</strong>; work already logged keeps the price it was logged at.
+          {!mobile && <> Changing a price affects <strong>future work only</strong>; work already logged keeps the price it was logged at.</>}
         </p>
 
         {/* Filters */}
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1rem' }}>
-          <div style={{ position: 'relative', flex: '1 1 220px', maxWidth: '340px' }}>
+          <div style={{ position: 'relative', flex: '1 1 220px', maxWidth: mobile ? 'none' : '340px', width: mobile ? '100%' : undefined }}>
             <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input
               type="text"
@@ -341,6 +342,53 @@ export const PartsCatalog = () => {
           <div style={{ color: '#fca5a5', fontSize: '0.85rem', marginBottom: '0.75rem' }}>{loadError}</div>
         )}
 
+        {mobile && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', opacity: loading ? 0.6 : 1, transition: 'opacity 0.15s' }}>
+            {list.parts.map((p) => (
+              <div key={p._id} style={{ backgroundColor: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '12px', opacity: p.isActive ? 1 : 0.55 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'baseline' }}>
+                  <span className="font-mono text-cyan" style={{ fontWeight: 700 }}>{p.code}</span>
+                  <strong>${p.unitPrice.toFixed(2)}</strong>
+                </div>
+                <div style={{ margin: '4px 0 8px' }}>{p.name}</div>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '10px' }}>
+                  <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>{p.category || 'General'}</span>
+                  {p.isActive
+                    ? <span className="badge status-completed">Available</span>
+                    : <span className="badge status-pending" style={{ color: '#ef4444', borderColor: '#ef4444' }}>Hidden</span>}
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    style={{ flex: 1 }}
+                    onClick={() => setForm({ id: p._id, code: p.code, name: p.name, category: p.category || 'General', unitPrice: String(p.unitPrice) })}
+                  >
+                    <Pencil size={12} /> Edit
+                  </button>
+                  <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => handleToggle(p)}>
+                    {p.isActive ? <PowerOff size={12} /> : <Power size={12} />}
+                    {p.isActive ? ' Hide' : ' Show'}
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.5)' }}
+                    onClick={() => handleDelete(p)}
+                    aria-label="Delete this item"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {!loading && list.parts.length === 0 && (
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>
+                {hasFilters ? 'No items match your filters.' : 'No items yet. Tap "Add Item" to start.'}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!mobile && (
         <div className="table-responsive" style={{ opacity: loading ? 0.6 : 1, transition: 'opacity 0.15s' }}>
           <table className="data-table">
             <thead>
@@ -406,6 +454,7 @@ export const PartsCatalog = () => {
             </tbody>
           </table>
         </div>
+        )}
 
         {/* Pagination */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginTop: '1rem', fontSize: '0.85rem' }}>
